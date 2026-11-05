@@ -1,5 +1,5 @@
-# weights / training artifacts (커밋 금지)
-*.pt
+# Training artifacts and other model exports (.pt files are allowed)
+*.pth
 *.onnx
 *.engine
 runs/
@@ -26,3 +26,34 @@ python_poc/_local_test/
 
 # macOS
 .DS_Store
+
+# target_bullet_yolo: local caches, generated outputs and encoder
+/target_bullet_yolo/.cache/
+/target_bullet_yolo/**/.pytest_cache/
+/target_bullet_yolo/**/.ruff_cache/
+/target_bullet_yolo/outputs/
+/target_bullet_yolo/bin/
+/target_bullet_yolo/**/*.log
+
+# Project model directories: allow .pt weights and placeholders
+/target_bullet_yolo/models/*
+!/target_bullet_yolo/models/*.pt
+!/target_bullet_yolo/models/.gitkeep
+# Re-open this directory because the repository-wide weights/ rule ignores it
+!/target_bullet_yolo/weights/
+/target_bullet_yolo/weights/*
+!/target_bullet_yolo/weights/*.pt
+!/target_bullet_yolo/weights/.gitkeep
+
+# Dataset contents stay local; keep only placeholders
+/target_bullet_yolo/data/target_dataset/*
+!/target_bullet_yolo/data/target_dataset/.gitkeep
+/target_bullet_yolo/data/bullet_dataset/*
+!/target_bullet_yolo/data/bullet_dataset/.gitkeep
+
+# Optional local video inputs and archives
+/target_bullet_yolo/video/
+/target_bullet_yolo/**/*.mp4
+/target_bullet_yolo/**/*.avi
+/target_bullet_yolo/**/*.mov
+/target_bullet_yolo/**/*.zip

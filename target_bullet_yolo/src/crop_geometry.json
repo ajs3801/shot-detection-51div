@@ -1,0 +1,860 @@
+{
+  "description": "Original crop rectangles (x0,y0,x1,y1) for existing paired images. Includes legacy crops with slightly different padding.",
+  "samples": {
+    "stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        437,
+        74,
+        1216,
+        1066
+      ]
+    },
+    "stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        437,
+        71,
+        1216,
+        1063
+      ]
+    },
+    "stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        437,
+        75,
+        1216,
+        1067
+      ]
+    },
+    "stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        438,
+        76,
+        1217,
+        1068
+      ]
+    },
+    "stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        438,
+        78,
+        1217,
+        1070
+      ]
+    },
+    "stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        438,
+        74,
+        1216,
+        1065
+      ]
+    },
+    "clip_01_02_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        452,
+        84,
+        1187,
+        1039
+      ]
+    },
+    "clip_01_02_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        451,
+        85,
+        1188,
+        1040
+      ]
+    },
+    "clip_01_02_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        461,
+        93,
+        1199,
+        1041
+      ]
+    },
+    "clip_01_02_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        461,
+        86,
+        1198,
+        1041
+      ]
+    },
+    "clip_01_02_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        472,
+        87,
+        1210,
+        1042
+      ]
+    },
+    "clip_01_02_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        457,
+        85,
+        1194,
+        1041
+      ]
+    },
+    "clip_01_03_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        451,
+        112,
+        1189,
+        1080
+      ]
+    },
+    "clip_01_03_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        452,
+        109,
+        1189,
+        1080
+      ]
+    },
+    "clip_01_03_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        451,
+        111,
+        1188,
+        1080
+      ]
+    },
+    "clip_01_03_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        452,
+        112,
+        1189,
+        1080
+      ]
+    },
+    "clip_01_03_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        451,
+        110,
+        1187,
+        1080
+      ]
+    },
+    "clip_01_03_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        452,
+        104,
+        1188,
+        1080
+      ]
+    },
+    "clip_01_04_stage_00_0hits": {
+      "split": "val",
+      "crop_xyxy": [
+        540,
+        143,
+        1144,
+        972
+      ]
+    },
+    "clip_01_04_stage_01_1hits": {
+      "split": "val",
+      "crop_xyxy": [
+        537,
+        145,
+        1144,
+        972
+      ]
+    },
+    "clip_01_04_stage_02_2hits": {
+      "split": "val",
+      "crop_xyxy": [
+        540,
+        148,
+        1145,
+        978
+      ]
+    },
+    "clip_01_04_stage_03_3hits": {
+      "split": "val",
+      "crop_xyxy": [
+        538,
+        144,
+        1144,
+        970
+      ]
+    },
+    "clip_01_04_stage_04_4hits": {
+      "split": "val",
+      "crop_xyxy": [
+        539,
+        143,
+        1147,
+        972
+      ]
+    },
+    "clip_01_05_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        542,
+        150,
+        1145,
+        977
+      ]
+    },
+    "clip_01_05_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        538,
+        149,
+        1141,
+        976
+      ]
+    },
+    "clip_01_05_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        540,
+        147,
+        1146,
+        976
+      ]
+    },
+    "clip_01_05_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        542,
+        148,
+        1148,
+        975
+      ]
+    },
+    "clip_01_06_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        539,
+        153,
+        1142,
+        977
+      ]
+    },
+    "clip_01_06_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        541,
+        157,
+        1145,
+        978
+      ]
+    },
+    "clip_01_06_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        539,
+        155,
+        1144,
+        979
+      ]
+    },
+    "clip_01_06_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        542,
+        159,
+        1145,
+        980
+      ]
+    },
+    "clip_01_06_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        541,
+        157,
+        1144,
+        979
+      ]
+    },
+    "clip_01_07_stage_00_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        536,
+        17,
+        1239,
+        937
+      ]
+    },
+    "clip_01_08_stage_00_0hits": {
+      "split": "test",
+      "crop_xyxy": [
+        542,
+        9,
+        1253,
+        930
+      ]
+    },
+    "clip_01_08_stage_01_1hits": {
+      "split": "test",
+      "crop_xyxy": [
+        542,
+        8,
+        1253,
+        932
+      ]
+    },
+    "clip_01_08_stage_02_2hits": {
+      "split": "test",
+      "crop_xyxy": [
+        547,
+        5,
+        1256,
+        934
+      ]
+    },
+    "clip_01_08_stage_03_3hits": {
+      "split": "test",
+      "crop_xyxy": [
+        538,
+        7,
+        1248,
+        929
+      ]
+    },
+    "clip_01_08_stage_04_4hits": {
+      "split": "test",
+      "crop_xyxy": [
+        543,
+        15,
+        1251,
+        936
+      ]
+    },
+    "clip_01_08_stage_05_5hits": {
+      "split": "test",
+      "crop_xyxy": [
+        542,
+        12,
+        1256,
+        933
+      ]
+    },
+    "clip_02_01_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        430,
+        63,
+        1177,
+        1080
+      ]
+    },
+    "clip_02_01_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        431,
+        66,
+        1180,
+        1080
+      ]
+    },
+    "clip_02_01_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        431,
+        67,
+        1180,
+        1080
+      ]
+    },
+    "clip_02_01_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        428,
+        74,
+        1183,
+        1080
+      ]
+    },
+    "clip_02_01_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        431,
+        64,
+        1180,
+        1080
+      ]
+    },
+    "clip_02_01_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        430,
+        63,
+        1180,
+        1080
+      ]
+    },
+    "clip_02_02_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        417,
+        58,
+        1197,
+        1080
+      ]
+    },
+    "clip_02_02_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        417,
+        61,
+        1198,
+        1080
+      ]
+    },
+    "clip_02_02_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        418,
+        59,
+        1197,
+        1080
+      ]
+    },
+    "clip_02_02_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        418,
+        59,
+        1198,
+        1080
+      ]
+    },
+    "clip_02_02_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        418,
+        60,
+        1198,
+        1080
+      ]
+    },
+    "clip_03_01_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        532,
+        0,
+        1239,
+        925
+      ]
+    },
+    "clip_03_01_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        536,
+        0,
+        1245,
+        926
+      ]
+    },
+    "clip_03_01_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        536,
+        2,
+        1247,
+        930
+      ]
+    },
+    "clip_03_01_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        537,
+        0,
+        1248,
+        929
+      ]
+    },
+    "clip_03_01_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        535,
+        0,
+        1246,
+        930
+      ]
+    },
+    "clip_03_01_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        536,
+        0,
+        1247,
+        927
+      ]
+    },
+    "clip_03_02_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        544,
+        90,
+        1233,
+        997
+      ]
+    },
+    "clip_03_02_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        545,
+        99,
+        1235,
+        1004
+      ]
+    },
+    "clip_03_02_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        548,
+        93,
+        1239,
+        997
+      ]
+    },
+    "clip_03_02_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        547,
+        99,
+        1236,
+        997
+      ]
+    },
+    "clip_03_02_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        549,
+        95,
+        1240,
+        998
+      ]
+    },
+    "clip_03_02_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        545,
+        90,
+        1234,
+        997
+      ]
+    },
+    "clip_03_03_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        554,
+        103,
+        1244,
+        997
+      ]
+    },
+    "clip_03_03_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        555,
+        99,
+        1244,
+        1000
+      ]
+    },
+    "clip_03_03_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        558,
+        99,
+        1246,
+        999
+      ]
+    },
+    "clip_03_03_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        555,
+        99,
+        1245,
+        1000
+      ]
+    },
+    "clip_03_03_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        555,
+        93,
+        1245,
+        998
+      ]
+    },
+    "clip_03_03_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        558,
+        97,
+        1248,
+        994
+      ]
+    },
+    "clip_03_04_stage_00_0hits": {
+      "split": "val",
+      "crop_xyxy": [
+        556,
+        101,
+        1240,
+        1010
+      ]
+    },
+    "clip_03_04_stage_01_1hits": {
+      "split": "val",
+      "crop_xyxy": [
+        561,
+        106,
+        1243,
+        1012
+      ]
+    },
+    "clip_03_04_stage_02_2hits": {
+      "split": "val",
+      "crop_xyxy": [
+        555,
+        100,
+        1237,
+        1009
+      ]
+    },
+    "clip_03_04_stage_03_3hits": {
+      "split": "val",
+      "crop_xyxy": [
+        556,
+        101,
+        1237,
+        1010
+      ]
+    },
+    "clip_03_05_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        558,
+        100,
+        1237,
+        1013
+      ]
+    },
+    "clip_03_05_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        553,
+        97,
+        1228,
+        1012
+      ]
+    },
+    "clip_03_05_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        556,
+        99,
+        1234,
+        1015
+      ]
+    },
+    "clip_03_05_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        552,
+        96,
+        1231,
+        1010
+      ]
+    },
+    "clip_03_05_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        548,
+        97,
+        1224,
+        1008
+      ]
+    },
+    "clip_03_05_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        553,
+        101,
+        1230,
+        1014
+      ]
+    },
+    "clip_03_06_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        548,
+        93,
+        1230,
+        1004
+      ]
+    },
+    "clip_03_06_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        566,
+        98,
+        1251,
+        1015
+      ]
+    },
+    "clip_03_06_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        556,
+        91,
+        1243,
+        1008
+      ]
+    },
+    "clip_03_06_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        564,
+        94,
+        1252,
+        1012
+      ]
+    },
+    "clip_03_06_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        569,
+        96,
+        1260,
+        1014
+      ]
+    },
+    "clip_03_06_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        558,
+        99,
+        1249,
+        1014
+      ]
+    },
+    "clip_04_01_stage_00_0hits": {
+      "split": "test",
+      "crop_xyxy": [
+        530,
+        144,
+        1148,
+        987
+      ]
+    },
+    "clip_04_01_stage_01_1hits": {
+      "split": "test",
+      "crop_xyxy": [
+        531,
+        147,
+        1149,
+        989
+      ]
+    },
+    "clip_04_01_stage_02_2hits": {
+      "split": "test",
+      "crop_xyxy": [
+        531,
+        146,
+        1147,
+        991
+      ]
+    },
+    "clip_04_01_stage_03_3hits": {
+      "split": "test",
+      "crop_xyxy": [
+        532,
+        148,
+        1150,
+        992
+      ]
+    },
+    "clip_04_02_stage_00_0hits": {
+      "split": "train",
+      "crop_xyxy": [
+        460,
+        82,
+        1179,
+        1049
+      ]
+    },
+    "clip_04_02_stage_01_1hits": {
+      "split": "train",
+      "crop_xyxy": [
+        459,
+        84,
+        1178,
+        1053
+      ]
+    },
+    "clip_04_02_stage_02_2hits": {
+      "split": "train",
+      "crop_xyxy": [
+        458,
+        82,
+        1178,
+        1051
+      ]
+    },
+    "clip_04_02_stage_03_3hits": {
+      "split": "train",
+      "crop_xyxy": [
+        461,
+        74,
+        1182,
+        1053
+      ]
+    },
+    "clip_04_02_stage_04_4hits": {
+      "split": "train",
+      "crop_xyxy": [
+        459,
+        86,
+        1176,
+        1051
+      ]
+    },
+    "clip_04_02_stage_05_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        459,
+        82,
+        1178,
+        1051
+      ]
+    },
+    "clip_04_03_stage_00_5hits": {
+      "split": "train",
+      "crop_xyxy": [
+        540,
+        8,
+        1243,
+        935
+      ]
+    }
+  }
+}

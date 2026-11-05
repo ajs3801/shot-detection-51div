@@ -1,0 +1,80 @@
+{
+  "datasets": {
+    "target": "data/target_dataset",
+    "bullet": "data/bullet_dataset",
+    "crop_geometry": "src/crop_geometry.json"
+  },
+  "target": {
+    "weights": "models/target_yolo26s_seg.pt",
+    "pretrained": "weights/yolo26s-seg.pt",
+    "imgsz": 1280,
+    "confidence": 0.25,
+    "device": "auto"
+  },
+  "bullet": {
+    "weights": "models/bullet_yolo26n.pt",
+    "pretrained": "weights/yolo26n.pt",
+    "imgsz": 1024,
+    "confidence": 0.45,
+    "device": "auto"
+  },
+  "inference": {
+    "padding": 6,
+    "iou": 0.7,
+    "ap_confidence_floor": 0.001,
+    "bullet_low_confidence": 0.2
+  },
+  "tracking": {
+    "enabled": true,
+    "target_measurement_alpha": 0.15,
+    "max_model_gap_s": 3.0,
+    "freeze_s": 0.35,
+    "confirmation_hits": 5,
+    "confirmation_window": 8,
+    "impact_hold_s": 1.5
+  },
+  "training": {
+    "common": {
+      "epochs": 200,
+      "patience": 40,
+      "optimizer": "AdamW",
+      "lr0": 0.001,
+      "lrf": 0.01,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 3.0,
+      "cos_lr": true,
+      "amp": true,
+      "workers": 2,
+      "cache": "ram",
+      "seed": 42,
+      "deterministic": true,
+      "plots": true,
+      "save": true,
+      "save_period": -1,
+      "hsv_h": 0.0,
+      "hsv_s": 0.0,
+      "hsv_v": 0.15,
+      "mixup": 0.0,
+      "copy_paste": 0.0,
+      "close_mosaic": 15,
+      "fliplr": 0.0,
+      "flipud": 0.0,
+      "translate": 0.08,
+      "scale": 0.2,
+      "degrees": 5.0,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "verbose": false
+    },
+    "target": {
+      "batch": 8,
+      "mosaic": 0.2,
+      "mask_ratio": 2
+    },
+    "bullet": {
+      "batch": 16,
+      "mosaic": 0.3
+    }
+  },
+  "threshold_provenance": "Current confidence thresholds were selected using the existing val split; test.py never tunes thresholds."
+}

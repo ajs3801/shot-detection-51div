@@ -1,0 +1,6 @@
+{
+  "models/target_yolo26s_seg.pt": "0acc1c66d861e10385b29a0b9aff99f49ba1a418c979054177d39300be32fc79",
+  "models/bullet_yolo26n.pt": "4ee1ef4589fa1be061c7dff9c679a57137b8d8b4e44745cd45bc893a5178c540",
+  "weights/yolo26s-seg.pt": "3da1d83e31caec96f9300eb4064f4f62882c133c7c264d63dfe61a7c197837a4",
+  "weights/yolo26n.pt": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef"
+}
