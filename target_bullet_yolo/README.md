@@ -7,6 +7,7 @@
 train.py       train split으로 학습, val split으로 학습 상태 확인 / best.pt 선택
 test.py        test split에서 표적지 + 탄착 성능 평가
 run.py         영상 입력 → 표적지 예측 → polygon crop → 탄착 예측 → 안정화 → 시각화 MP4
+run_cpu.py     같은 영상 파이프라인을 CPU에서만 실행
 config.json    데이터 경로, 모델, confidence, 학습 및 안정화 옵션
 models/        기존 학습을 완료한 YOLO26s-seg / YOLO26n 가중치
 weights/       새 학습의 시작점인 pretrained 가중치
@@ -194,6 +195,13 @@ outputs/test/exp01/native/
 
 ## 5. 영상 추론: run.py
 
+CPU 전용 실행은 `run_cpu.py`를 사용합니다. 설정 파일이나 CLI의 device 값과 관계없이
+두 모델 모두 CPU로 고정하며, 나머지 옵션은 `run.py`와 같습니다.
+
+```bash
+python run_cpu.py --source /workspace/KIPOT/군학AI/video/clip_02_02.mp4 --output outputs/video/clip_02_02_cpu.mp4
+```
+
 기존 학습 완료 모델 + 기본 안정화 사용:
 
 ```bash
@@ -217,6 +225,31 @@ python run.py --source ../video/clip_02_02.mp4 --no-temporal --output outputs/vi
 ```bash
 python run.py --source ../video/clip_02_02.mp4 --max-frames 90 --output outputs/video/check90.mp4
 ```
+
+격자 기준 탄착군 시각화:
+
+```bash
+python run.py --config config.local.json --grouping --grid-cell-cm 1 \
+  --source /workspace/KIPOT/군학AI/video/clip_02_02.mp4 \
+  --output outputs/video/clip_02_02_gpu_grouping.mp4
+```
+
+`--grouping`은 확정된 탄착 중심들을 표적별로 누적하고, 각 탄착 사이의 거리(cm),
+최대 탄착 간 거리, 최소 포괄원의 지름을 표시합니다. 표적 중심은 측정에 사용하지 않습니다.
+분홍색 선은 최소 포괄원, 하늘색 선은 가장 먼 두 탄착을 연결합니다.
+촬영 각도에 따라 실제 원이 원본 영상에서는 타원처럼 투영될 수 있습니다.
+회색 점은 현재 검출되지 않지만 같은 표적에서 이전에 확정된 탄착입니다.
+표적지 추적이 초기화되면 누적 탄착과 격자 보정을 함께 초기화합니다.
+
+cm 환산은 추가 학습 모델 없이 OpenCV로 인식한 격자 선의 반복 간격과 원근 변환을 사용합니다.
+`--grid-cell-cm`은 실제 격자 한 칸의 길이이며 기본값은 1cm입니다.
+현재 자동 보정은 샘플 표적처럼 중앙 무늬의 양옆에 반복 격자가 보이는 구조를 대상으로 합니다.
+규칙적인 격자가 확인되지 않으면 cm 값을 표시하지 않고 보정 대기 상태를 표시합니다.
+보정 후 흐린 프레임에서는 최근 보정값과 추적한 표적 위치를 사용합니다.
+측정값은 검출 bbox 중심과 격자 보정에 기반한 추정값이며, 실제 탄착 중심과의 오차는 별도 검증이 필요합니다.
+최소 포괄원의 지름은 가장 먼 두 탄착 사이 거리와 다를 수 있습니다.
+전체 탄착 쌍의 거리와 보정 정보는 프레임별 `predictions.jsonl`의 `grouping`에 저장합니다.
+이 옵션은 `run_cpu.py`에서도 사용할 수 있습니다.
 
 --output 생략 시 outputs/video/<영상이름>_<시간>.mp4로 저장합니다.
 기존 결과는 덮어쓰지 않으므로 재실행 시 새 output 이름을 사용합니다.

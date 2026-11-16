@@ -28,6 +28,7 @@ python_poc/_local_test/
 .DS_Store
 
 # target_bullet_yolo: local caches, generated outputs and encoder
+/target_bullet_yolo/config.local.json
 /target_bullet_yolo/.cache/
 /target_bullet_yolo/**/.pytest_cache/
 /target_bullet_yolo/**/.ruff_cache/

@@ -1,0 +1,2 @@
+clip_01_03.mp4: grouping fail
+clip_02_02.mp4: grouping success

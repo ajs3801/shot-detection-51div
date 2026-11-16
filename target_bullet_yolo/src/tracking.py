@@ -207,6 +207,8 @@ class ImpactTracker:
                 t['confirmed'] = True
             if t['confirmed']:
                 results.append({'id': t['id'], 'box': map_boxes([t['box']], to_image)[0].tolist(),
+                                'center_plane': ((t['box'][:2]+t['box'][2:])/2).tolist(),
+                                'box_plane': t['box'].tolist(),
                                 'score_ema': t['score'], 'held': t['last_seen'] != frame,
                                 'gap_frames': frame - t['last_seen']})
         return results

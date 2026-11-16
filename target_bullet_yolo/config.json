@@ -4,6 +4,11 @@
     "bullet": "data/bullet_dataset",
     "crop_geometry": "src/crop_geometry.json"
   },
+  "sample_videos": {
+    "note": "run.py의 --source에 지정할 두 가지 샘플 영상입니다. clip_01_03은 grouping fail case, clip_02_02는 grouping success case입니다.",
+    "grouping_fail": "/workspace/KIPOT/군학AI/sample_clip/clip_01_03_fail.mp4",
+    "grouping_success": "/workspace/KIPOT/군학AI/sample_clip/clip_02_02_success.mp4"
+  },
   "target": {
     "weights": "models/target_yolo26s_seg.pt",
     "pretrained": "weights/yolo26s-seg.pt",

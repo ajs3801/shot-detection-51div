@@ -13,6 +13,7 @@ from .geometry import crop_polygon, shift_boxes
 from .prediction import predict_target, predict_bullets
 from .runtime import ROOT, save_json, require_weights
 from .tracking import TargetTracker, ImpactTracker
+from .grouping import GridCalibrator, ImpactGroup
 from .visualization import video_frame, text
 
 
@@ -49,6 +50,10 @@ class VideoPredictor:
         self.target_tracker = TargetTracker(fps, settings['target_measurement_alpha'], settings['max_model_gap_s'], settings['freeze_s'])
         self.impacts = ImpactTracker(fps, config['bullet']['confidence'], min(config['inference']['bullet_low_confidence'], config['bullet']['confidence']),
                                      settings['confirmation_hits'], settings['confirmation_window'], settings['impact_hold_s'])
+        self.grouping = config.get('grouping', {}).get('enabled', False)
+        if self.grouping:
+            self.grid = GridCalibrator(fps, config.get('grouping', {}).get('grid_cell_cm', 1.))
+            self.group = ImpactGroup()
 
     def predict(self, image, frame):
         tcfg, bcfg, icfg = self.config['target'], self.config['bullet'], self.config['inference']
@@ -81,6 +86,16 @@ class VideoPredictor:
             else:
                 tracks = [{'id': None, 'box': box.tolist(), 'score_ema': float(score), 'held': False, 'gap_frames': 0}
                           for box, score in zip(boxes, scores) if score >= bcfg['confidence']]
+        after_tracking = time.perf_counter()
+        group_result = None
+        if self.grouping:
+            if status['reset'] or quad is None:
+                self.grid.reset()
+                self.group.reset()
+            if quad is not None:
+                self.grid.update(image, quad, frame)
+                self.group.update(tracks, quad, frame)
+                group_result = self.group.measurements(self.grid, quad, frame)
         end = time.perf_counter()
         record = {'frame': frame, 'time_s': frame/self.fps, 'fps': self.fps,
                   'raw_target_detected': target is not None,
@@ -92,8 +107,11 @@ class VideoPredictor:
                   'raw_impact_boxes_original_xyxy': boxes.tolist(), 'raw_impact_scores': scores.tolist(),
                   'impact_count': len(tracks) if quad is not None else None, 'impact_tracks': tracks,
                   'timing_ms': {'target': (after_target-start)*1000, 'flow': (after_flow-after_target)*1000,
-                                'crop_bullet': (after_bullet-after_flow)*1000, 'impact_tracking': (end-after_bullet)*1000,
+                                'crop_bullet': (after_bullet-after_flow)*1000, 'impact_tracking': (after_tracking-after_bullet)*1000,
                                 'total': (end-start)*1000}}
+        if self.grouping:
+            record['grouping'] = group_result
+            record['timing_ms']['grouping'] = (end-after_tracking)*1000
         return record, quad, crop, rect, tracks
 
 
@@ -138,6 +156,8 @@ def run_video(source, output, config, max_frames=None, audio=True):
     if limit:
         preview_indices.update(round((limit-1)*fraction) for fraction in [.2, .4, .6, .8, .98])
     previews = []
+    latest_group = None
+    calibrated_frames = 0
 
     def progress(status, **extra):
         save_json(artifacts / 'progress.json', {'status': status, 'source': str(source), 'output': str(output),
@@ -170,6 +190,9 @@ def run_video(source, output, config, max_frames=None, audio=True):
                 if not ok:
                     break
                 row, quad, crop, rect, tracks = predictor.predict(image, n)
+                if row.get('grouping') is not None:
+                    latest_group = row['grouping']
+                    calibrated_frames += int(latest_group['state'] == 'calibrated')
                 annotated = video_frame(image, quad, crop, rect, tracks, row, config, limit)
                 predictions.write(json.dumps(row) + '\n')
                 encoder.stdin.write(annotated.tobytes())
@@ -216,6 +239,9 @@ def run_video(source, output, config, max_frames=None, audio=True):
                    'mean_inference_timing_ms': {key: value/n for key, value in time_sums.items()},
                    'elapsed_s': time.perf_counter()-started, 'temporal_tracking': config['tracking']['enabled'],
                    'prediction_cache_used': False, 'GT_used': False, 'audio': 'copy when present' if audio else 'disabled'}
+        if config.get('grouping', {}).get('enabled', False):
+            summary['grouping'] = {'calibrated_frames': calibrated_frames, 'latest': latest_group,
+                                   'note': 'Grid-derived estimates between detected impact centers; no target-center reference.'}
         save_json(artifacts / 'summary.json', summary)
         progress('completed', summary=summary)
         print(f'Video: {output}\nPredictions / previews: {artifacts}')

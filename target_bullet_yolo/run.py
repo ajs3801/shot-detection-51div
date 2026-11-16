@@ -9,6 +9,10 @@ def main(args):
     configure()
     from src.video import run_video
     config = config_from_args(args)
+    if getattr(args, 'grouping', False):
+        config.setdefault('grouping', {})['enabled'] = True
+    if getattr(args, 'grid_cell_cm', None) is not None:
+        config.setdefault('grouping', {})['grid_cell_cm'] = args.grid_cell_cm
     if args.no_temporal:
         config['tracking']['enabled'] = False
     if args.target_conf is not None:
@@ -34,6 +38,8 @@ def parser():
     value.add_argument('--target-conf', type=float)
     value.add_argument('--bullet-conf', type=float)
     value.add_argument('--max-frames', type=int, help='Optional frame limit for a quick check.')
+    value.add_argument('--grouping', action='store_true', help='Measure impact-to-impact distances and draw a group circle using the printed grid.')
+    value.add_argument('--grid-cell-cm', type=float, help='Physical size of one square grid cell; default 1 cm.')
     return value
 
 
