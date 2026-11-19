@@ -31,7 +31,10 @@ def main(args):
     for sample in paired_samples(config, split='test'):
         full, quad_gt, truth = sample['full'], sample['gt_quad'], sample['gt_boxes']
         boxes_gt, scores_gt = predict_bullets(bullet, sample['gt_crop'], bcfg['device'], bcfg['imgsz'], icfg['ap_confidence_floor'], icfg['iou'])
-        prediction = predict_target(target, full, tcfg['confidence'], tcfg['device'], tcfg['imgsz'], icfg['iou'])
+        prediction = predict_target(
+            target, full, tcfg['confidence'], tcfg['device'], tcfg['imgsz'], icfg['iou'],
+            retina_masks=tcfg.get('retina_masks', True),
+        )
         crop = rect = None
         boxes = np.empty((0, 4), np.float32)
         scores = np.empty(0, np.float32)

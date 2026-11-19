@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
-from .tracking import PLANE
+from .tracking import PLANE, map_boxes
 
 
 def transform_points(points, matrix):
@@ -165,6 +165,47 @@ class ImpactGroup:
         self.shots = []
         self.next_id = 1
 
+    def rebase(self, projected_quad, current_quad):
+        """Keep the same impacts when reacquisition changes the paper's coordinate basis."""
+        to_image = cv2.getPerspectiveTransform(PLANE, np.float32(projected_quad))
+        to_plane = cv2.getPerspectiveTransform(np.float32(current_quad), PLANE)
+        mapping = to_plane @ to_image
+        points = transform_points([shot['point_plane'] for shot in self.shots], mapping)
+        boxes = map_boxes([shot['box_plane'] for shot in self.shots], mapping)
+        for shot, point, box in zip(self.shots, points, boxes):
+            shot['point_plane'], shot['box_plane'] = point, box
+
+    @staticmethod
+    def _matching_distance(shot, point, plane_box):
+        size = min(np.linalg.norm(shot['box_plane'][2:]-shot['box_plane'][:2]),
+                   np.linalg.norm(plane_box[2:]-plane_box[:2]))
+        distance = float(np.linalg.norm(point-shot['point_plane']))
+        return distance if distance < max(3., .35*size) else None
+
+    def has_new_candidate(self, boxes, quad):
+        if not len(boxes):
+            return False
+        to_plane = cv2.getPerspectiveTransform(np.float32(quad), PLANE)
+        for box in map_boxes(boxes, to_plane):
+            center = (box[:2]+box[2:])/2
+            if ((center >= PLANE[0]) & (center <= PLANE[2])).all():
+                if all(self._matching_distance(shot, center, box) is None for shot in self.shots):
+                    return True
+        return False
+
+    def projected_tracks(self, quad, frame):
+        if not self.shots:
+            return []
+        to_image = cv2.getPerspectiveTransform(PLANE, np.float32(quad))
+        points = [shot['point_plane'] for shot in self.shots]
+        # Center each display box on the accumulated position, not its most recent observation.
+        boxes = [shot['box_plane'] + np.tile(point - (shot['box_plane'][:2]+shot['box_plane'][2:])/2, 2)
+                 for shot, point in zip(self.shots, points)]
+        return [{'id': shot['id'], 'box': image_box.tolist(), 'box_plane': box.tolist(),
+                 'center_plane': point.tolist(), 'score_ema': shot['score_ema'],
+                 'held': shot['last_seen_frame'] != frame, 'gap_frames': frame-shot['last_seen_frame']}
+                for shot, point, box, image_box in zip(self.shots, points, boxes, map_boxes(boxes, to_image))]
+
     def update(self, tracks, quad, frame):
         to_plane = cv2.getPerspectiveTransform(np.float32(quad), PLANE)
         used = set()
@@ -181,11 +222,9 @@ class ImpactGroup:
                 for shot in self.shots:
                     if shot['id'] in used:
                         continue
-                    size = min(np.linalg.norm(shot['box_plane'][2:]-shot['box_plane'][:2]),
-                               np.linalg.norm(plane_box[2:]-plane_box[:2]))
-                    distance = np.linalg.norm(point-shot['point_plane'])
-                    if distance < max(3., .35*size):
-                        candidates.append((float(distance), shot))
+                    distance = self._matching_distance(shot, point, plane_box)
+                    if distance is not None:
+                        candidates.append((distance, shot))
                 if candidates:
                     match = min(candidates, key=lambda item: item[0])[1]
             if match is None:
@@ -197,16 +236,18 @@ class ImpactGroup:
                 match['track_ids'].add(track_id)
             match['point_plane'] = .8*match['point_plane']+.2*point
             match['box_plane'] = plane_box.copy()
+            match['score_ema'] = track.get('score_ema')
             match['last_seen_frame'] = frame
             match['observations'] += 1
             used.add(match['id'])
 
     def measurements(self, calibration, quad, frame):
-        result = {'state': 'calibrated' if calibration.matrix is not None else 'waiting for grid',
+        state = 'calibrated' if calibration.matrix is not None else 'waiting for grid'
+        result = {'state': state if quad is not None else 'waiting for target',
                   'impact_count': len(self.shots), 'grid_cell_cm': calibration.cell_cm,
                   'measurement_basis': 'distances between detected impact centers',
                   'accumulated': True, 'points': []}
-        if calibration.matrix is None:
+        if quad is None or calibration.matrix is None:
             return result
         plane_points = [shot['point_plane'] for shot in self.shots]
         metric = transform_points(plane_points, calibration.matrix)
