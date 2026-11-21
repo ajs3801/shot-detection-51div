@@ -3,12 +3,15 @@ import numpy as np
 from .geometry import fit_quad
 
 
-def predict_target(model, image, confidence=0.25, device=0, imgsz=1280, iou=.7):
-    result = model.predict(image, device=device, imgsz=imgsz, conf=confidence, iou=iou, max_det=10, retina_masks=True, verbose=False)[0]
+def predict_target(model, image, confidence=0.25, device=0, imgsz=1280, iou=.7, *, retina_masks=True):
+    result = model.predict(
+        image, device=device, imgsz=imgsz, conf=confidence, iou=iou,
+        max_det=10, retina_masks=retina_masks, verbose=False,
+    )[0]
     if result.boxes is None or result.masks is None or (not len(result.boxes)):
         return None
     index = int(result.boxes.conf.argmax().item())
-    contour = np.float32(result.masks.xy[index])
+    contour = np.float32(result.masks[index:index + 1].xy[0])
     (h, w) = image.shape[:2]
     if len(contour) < 3:
         return None

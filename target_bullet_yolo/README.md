@@ -7,7 +7,6 @@
 train.py       train split으로 학습, val split으로 학습 상태 확인 / best.pt 선택
 test.py        test split에서 표적지 + 탄착 성능 평가
 run.py         영상 입력 → 표적지 예측 → polygon crop → 탄착 예측 → 안정화 → 시각화 MP4
-run_cpu.py     같은 영상 파이프라인을 CPU에서만 실행
 config.json    데이터 경로, 모델, confidence, 학습 및 안정화 옵션
 models/        기존 학습을 완료한 YOLO26s-seg / YOLO26n 가중치
 weights/       새 학습의 시작점인 pretrained 가중치
@@ -195,11 +194,10 @@ outputs/test/exp01/native/
 
 ## 5. 영상 추론: run.py
 
-CPU 전용 실행은 `run_cpu.py`를 사용합니다. 설정 파일이나 CLI의 device 값과 관계없이
-두 모델 모두 CPU로 고정하며, 나머지 옵션은 `run.py`와 같습니다.
+두 모델을 CPU로 실행하려면 `--device cpu`를 지정합니다.
 
 ```bash
-python run_cpu.py --source /workspace/KIPOT/군학AI/video/clip_02_02.mp4 --output outputs/video/clip_02_02_cpu.mp4
+python run.py --device cpu --source ../video/clip_02_02.mp4 --output outputs/video/clip_02_02_cpu.mp4
 ```
 
 기존 학습 완료 모델 + 기본 안정화 사용:
@@ -226,6 +224,74 @@ python run.py --source ../video/clip_02_02.mp4 --no-temporal --output outputs/vi
 python run.py --source ../video/clip_02_02.mp4 --max-frames 90 --output outputs/video/check90.mp4
 ```
 
+초당 5프레임 추론으로 탄착군 확인:
+
+```bash
+python run.py --source ../video/clip_02_02.mp4 --device cpu --inference-fps 5 --grouping
+```
+
+`--inference-fps`는 지정한 시각에 가장 가까운 원본 프레임을 선택하고 결과 MP4를 추론 FPS로 저장합니다.
+`--max-frames`는 샘플링 전 원본 프레임 수를 제한합니다.
+JSONL에 추론 순번과 함께 원본 프레임 번호(`source_frame`)와 시각(`source_time_s`)을 기록합니다.
+기본 탄착 확정 조건은 추론한 8프레임 중 5회 검출이므로 5 FPS에서 연속 검출에 최소 0.8초가 걸립니다.
+
+원본 FPS를 유지하면서 모델 호출을 줄이는 두 프리셋을 제공합니다.
+
+```bash
+python run.py --source ../video/clip_02_02.mp4 --device cpu --cpu-threads 4 --preset budget27 --grouping --no-video
+python run.py --source ../video/clip_02_02.mp4 --device cpu --cpu-threads 4 --preset adaptive30 --grouping --no-video
+```
+
+| 설정 | Budget27 · 실시간 검증 후보 | Adaptive30 · 오프라인 기준(oracle) |
+|---|---:|---:|
+| 영상 분석 주기 상한 | 30Hz | 30Hz |
+| 표적지 모델 기본 호출률 | 0.5Hz | 2Hz |
+| 탄착 모델 기본 호출률 | 3Hz | 5Hz |
+| 후보 발견 후 추가 연속 추론 | 4프레임 | 8프레임 |
+| 모델 입력 크기 · 표적지 / 탄착 | 1280 / 896 | 1280 / 1024 |
+| 탄착 확정 조건 | 5프레임 중 3회 | 8프레임 중 5회 |
+
+위 명령은 기본 PyTorch FP32 가중치로 CPU 실험을 재현합니다.
+Budget27은 실시간 검증 후보이며, 녹화 영상 1배속 검증에서는 프레임을 보존하는 직렬 처리로 1초 내 반영 기준에 미달했습니다.
+
+프리셋 또는 `--adaptive-inference` 모드에서 MP4를 저장할 때는 원본 프레임 수와 FPS를 보존합니다.
+분석은 원본 FPS와 설정한 영상 분석 주기 중 낮은 빈도로 수행합니다.
+표적지 모델 호출 사이에는 분석 프레임마다 LK 추적으로 표적 위치를 갱신합니다.
+LK는 표적 ROI에서 특징점을 찾고, 추적 품질과 분포가 유지되는 동안 특징점을 재사용합니다.
+탄착 모델은 설정한 기본 호출률을 사용하고, 아직 확정되지 않은 후보를 찾으면 설정된 수만큼 다음 분석 프레임을 연속 추론합니다.
+이 연속 추론 중에는 정상적으로 추적 중인 표적의 정기 탐지를 끝난 뒤로 미룹니다. 추적 유실에 따른 긴급 재탐지는 수행합니다.
+분석하지 않은 원본 프레임에는 최근 분석 결과를 표시합니다.
+
+호출 주기는 CLI 또는 설정 파일의 `inference` 항목에서 조정할 수 있습니다.
+
+| CLI 옵션 | `inference` 설정 키 | 기본값 |
+|---|---|---:|
+| `--analysis-fps` | `analysis_fps` | 30 |
+| `--target-hz` | `target_hz` | 2 |
+| `--bullet-hz` | `bullet_hz` | 5 |
+| `--bullet-burst-frames` | `bullet_burst_frames` | 8 |
+
+분석 빈도는 0보다 크고 최대 30Hz이며, 표적지·탄착 호출 빈도는 지정한 분석 빈도 이하여야 합니다.
+원본 FPS가 더 낮으면 해당 FPS까지 줄여 적용합니다. 연속 추론 길이는 양의 정수로 지정합니다.
+이 CLI 옵션들은 `--preset` 또는 `--adaptive-inference`와 함께 사용합니다.
+프리셋을 지정하면 프리셋 값이 설정 파일보다 우선하며, 명시한 CLI 옵션이 프리셋 값을 덮어씁니다.
+적용된 주기는 결과의 `inference_schedule`에 기록합니다.
+`--bullet-imgsz`는 탄착 모델의 입력 크기를 설정합니다.
+`--confirmation-hits`와 `--confirmation-window`는 한 탄착을 확정하는 데 필요한 관측 횟수와 분석 프레임 창을 설정합니다.
+
+JSONL은 원본 프레임마다 `analysis_frame`, `analysis_ran`, `analysis_fps`와 모델별 호출 여부 및 추론 순번을 기록합니다.
+`summary.json`에는 모델별 총 호출 횟수와 함께 분석 프레임 수(`analysis_frames`), 분석 빈도(`analysis_fps`),
+분석 소요 시간(`analysis_elapsed_s`), 분석 프레임당 평균 처리 시간(`mean_analysis_timing_ms`)을 기록합니다.
+`target_refresh_deferred_frames`는 연속 탄착 추론 때문에 표적지 정기 탐지를 미룬 분석 프레임 수입니다.
+이 모드에서는 시간 추적이 필요하며 `--inference-fps` 및 `--no-temporal`과 함께 쓸 수 없습니다.
+
+CPU에서 이 모드를 실행할 때 PyTorch 스레드 수의 기본값은 4와 논리 CPU 수 중 작은 값입니다.
+`--cpu-threads N`으로 지정할 수 있으며, 적용한 값은 결과 설정 파일의 `inference.cpu_threads`에 저장됩니다.
+
+`--no-video`를 추가하면 예측 JSONL과 요약만 남기고 영상과 미리보기를 생략합니다.
+`summary.json`의 `output_timing_s`에는 렌더링, 인코더 전송 및 종료 대기, 미리보기 저장에
+소요된 시간이 기록됩니다.
+
 격자 기준 탄착군 시각화:
 
 ```bash
@@ -239,7 +305,7 @@ python run.py --config config.local.json --grouping --grid-cell-cm 1 \
 분홍색 선은 최소 포괄원, 하늘색 선은 가장 먼 두 탄착을 연결합니다.
 촬영 각도에 따라 실제 원이 원본 영상에서는 타원처럼 투영될 수 있습니다.
 회색 점은 현재 검출되지 않지만 같은 표적에서 이전에 확정된 탄착입니다.
-표적지 추적이 초기화되면 누적 탄착과 격자 보정을 함께 초기화합니다.
+적응형 추론은 일시적인 표적 유실 동안 누적 탄착을 보존하며, 다른 표적이 확인되면 누적 탄착과 격자 보정을 초기화합니다.
 
 cm 환산은 추가 학습 모델 없이 OpenCV로 인식한 격자 선의 반복 간격과 원근 변환을 사용합니다.
 `--grid-cell-cm`은 실제 격자 한 칸의 길이이며 기본값은 1cm입니다.
@@ -249,7 +315,6 @@ cm 환산은 추가 학습 모델 없이 OpenCV로 인식한 격자 선의 반�
 측정값은 검출 bbox 중심과 격자 보정에 기반한 추정값이며, 실제 탄착 중심과의 오차는 별도 검증이 필요합니다.
 최소 포괄원의 지름은 가장 먼 두 탄착 사이 거리와 다를 수 있습니다.
 전체 탄착 쌍의 거리와 보정 정보는 프레임별 `predictions.jsonl`의 `grouping`에 저장합니다.
-이 옵션은 `run_cpu.py`에서도 사용할 수 있습니다.
 
 --output 생략 시 outputs/video/<영상이름>_<시간>.mp4로 저장합니다.
 기존 결과는 덮어쓰지 않으므로 재실행 시 새 output 이름을 사용합니다.
@@ -266,7 +331,7 @@ outputs/video/clip_02_02/progress.json
 outputs/video/clip_02_02/preview_montage.jpg
 ```
 
-실행 시 두 모델을 직접 불러 매 프레임 추론합니다. 기존 예측 캐시나 GT는 사용하지 않습니다.
+기본 실행은 두 모델을 직접 불러 매 프레임 추론합니다. 기존 예측 캐시나 GT는 사용하지 않습니다.
 표적지 polygon bbox에 6px padding을 주어 crop하고, polygon 외부 픽셀은 정확히 (0,0,0)으로 마스킹합니다.
 
 ## 6. 기본 안정화

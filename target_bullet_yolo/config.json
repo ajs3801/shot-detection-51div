@@ -13,6 +13,7 @@
     "weights": "models/target_yolo26s_seg.pt",
     "pretrained": "weights/yolo26s-seg.pt",
     "imgsz": 1280,
+    "retina_masks": true,
     "confidence": 0.25,
     "device": "auto"
   },

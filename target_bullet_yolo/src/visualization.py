@@ -1,6 +1,7 @@
 """Drawing only: never changes the pixels passed to either detector."""
 import cv2
 import numpy as np
+from .geometry import crop_polygon
 
 
 def text(image, message, xy, size=.7, color=(245, 245, 245), thickness=2):
@@ -16,13 +17,13 @@ def panel(image, rect, alpha=.82):
         cv2.addWeighted(np.full_like(roi, (28, 23, 18)), alpha, roi, 1-alpha, 0, roi)
 
 
-def draw_tracks(image, tracks, offset=(0, 0), scale=1.):
+def draw_tracks(image, tracks, offset=(0, 0), scale=1., *, id_prefix='#'):
     for track in tracks:
         box = np.array(track['box']) - np.tile(offset, 2)
         left, top, right, bottom = np.rint(box).astype(int)
         color = (0, 150, 255) if track.get('held') else (0, 235, 255)
         cv2.rectangle(image, (left, top), (right, bottom), color, max(1, round(2*scale)), cv2.LINE_AA)
-        label = f'#{track["id"]}' if track.get('id') is not None else f'{track["score_ema"]:.2f}'
+        label = f'{id_prefix}{track["id"]}' if track.get('id') is not None else f'{track["score_ema"]:.2f}'
         if track.get('held'):
             label += ' HOLD'
         text(image, label, (left, max(12, top-6)), max(.3, .48*scale), color, 1)
@@ -36,7 +37,7 @@ def draw_boxes(image, boxes, scores=None, color=(0, 235, 255)):
             text(image, f'{scores[index]:.2f}', (left, max(18, top-5)), .5, color, 1)
 
 
-def draw_group(image, group, offset=(0, 0), scale=1.):
+def draw_group(image, group, offset=(0, 0), scale=1., *, label_points=True):
     if not group or group['state'] != 'calibrated':
         return
     offset = np.float32(offset)
@@ -55,12 +56,18 @@ def draw_group(image, group, offset=(0, 0), scale=1.):
         x, y = np.rint(points[point['id']]).astype(int)
         color = (160, 160, 160) if point['held'] else (255, 80, 240)
         cv2.circle(image, (x, y), max(2, round(4*scale)), color, -1, cv2.LINE_AA)
-        text(image, f'P{point["id"]}', (x+8, y+18), max(.3, .5*scale), color, 1)
+        if label_points:
+            text(image, f'P{point["id"]}', (x+8, y+18), max(.3, .5*scale), color, 1)
 
 
-def group_panel(image, group, scale=1.):
+def group_panel(image, group, scale=1., *, adaptive=False, held=False):
     lines = [('IMPACT GROUP | CENTER-TO-CENTER', (255, 80, 240))]
-    if not group or group['state'] != 'calibrated':
+    if adaptive and group and (held or group['state'] == 'waiting for target'):
+        lines.append((f'Accumulated impacts: {group["impact_count"]} (held)', (245, 245, 245)))
+        lines.append(('Waiting for target', (80, 210, 255)))
+    elif not group or group['state'] != 'calibrated':
+        if adaptive and group and group.get('impact_count') is not None:
+            lines.append((f'Accumulated impacts: {group["impact_count"]}', (245, 245, 245)))
         lines.append(('Waiting for reliable grid calibration', (80, 210, 255)))
     else:
         lines.append((f'Grid cell: {group["grid_cell_cm"]:g} cm | Estimated', (245, 245, 245)))
@@ -94,21 +101,38 @@ def video_frame(image, quad, crop, rect, tracks, record, config, total):
     def put(message, x, y, size=.7, color=(245, 245, 245)):
         text(result, message, point(x, y), max(.28, size*scale), color, max(1, round(2*scale)))
     temporal = config['tracking']['enabled']
+    adaptive = record.get('inference_mode') == 'adaptive'
+    count_held = adaptive and record.get('impact_count_held', False)
+    if adaptive and quad is None:
+        crop = rect = None
+    track_prefix = 'P' if adaptive else '#'
     if quad is not None:
         color = (80, 255, 80) if record['raw_target_detected'] else (255, 210, 60)
         cv2.polylines(result, [np.rint(quad).astype(np.int32)], True, color, max(1, round(3*scale)), cv2.LINE_AA)
-        draw_tracks(result, tracks, scale=scale)
-        draw_group(result, record.get('grouping'), scale=scale)
+        draw_tracks(result, tracks, scale=scale, id_prefix=track_prefix)
+        draw_group(result, record.get('grouping'), scale=scale, label_points=not adaptive)
     panel(result, (*point(12, 12), *point(1170, 112)))
-    title = 'TEMPORAL: target optical flow + impact consensus / tracking' if temporal else 'YOLO26s-seg target -> YOLO26n impacts (per frame)'
+    if adaptive:
+        title = 'ADAPTIVE: target tracking and impact detection'
+    else:
+        title = 'TEMPORAL: target optical flow + impact consensus / tracking' if temporal else 'YOLO26s-seg target -> YOLO26n impacts (per frame)'
     put(title, 26, 42, .74)
     count = record['impact_count'] if quad is not None else 'N/A'
+    if count_held:
+        count = f'{record["impact_count"]} (held)'
     raw = record['raw_impact_count'] if quad is not None else 'N/A'
+    if adaptive and quad is not None and not record['bullet_inference_ran']:
+        raw = 'Skipped'
     put(f'Frame {record["frame"]}/{total-1 if total else "?"} | {record["time_s"]:05.2f}s | Displayed impacts: {count} | Raw: {raw}', 26, 76, .66)
     hold = config['tracking']['impact_hold_s']
-    put(f'Target: {record["target_tracking"]["state"]} | Yellow: updated  Orange: held (max {hold:g}s)' if temporal else 'Independent predictions; temporal stabilization disabled', 26, 107, .58)
+    if adaptive:
+        target_state = record['target_tracking']['state'] if record.get('analysis_ran', True) else 'Held between analysis ticks'
+        status = f'Target: {target_state} | Yellow: observed  Orange: carried forward'
+    else:
+        status = f'Target: {record["target_tracking"]["state"]} | Yellow: updated  Orange: held (max {hold:g}s)' if temporal else 'Independent predictions; temporal stabilization disabled'
+    put(status, 26, 107, .58)
     if config.get('grouping', {}).get('enabled', False):
-        group_panel(result, record.get('grouping'), scale)
+        group_panel(result, record.get('grouping'), scale, adaptive=adaptive, held=count_held)
     pw, ph = point(430, 865)
     px, py = w-round(450*scale), round(135*scale)
     ph = min(ph, h-py-round(12*scale))
@@ -117,10 +141,12 @@ def video_frame(image, quad, crop, rect, tracks, record, config, total):
     panel(result, (px, py, pw, ph))
     text(result, 'STABILIZED POLYGON CROP' if temporal else 'PREDICTED POLYGON CROP',
          (px+round(12*scale), py+round(30*scale)), max(.28, .57*scale), thickness=1)
+    if adaptive and quad is not None and crop is None:
+        crop, rect = crop_polygon(image, quad, config['inference']['padding'])
     if crop is not None:
         display = crop.copy()
-        draw_tracks(display, tracks, rect[:2])
-        draw_group(display, record.get('grouping'), rect[:2], scale=scale)
+        draw_tracks(display, tracks, rect[:2], id_prefix=track_prefix)
+        draw_group(display, record.get('grouping'), rect[:2], scale=scale, label_points=not adaptive)
         available_w, available_h = pw-round(20*scale), ph-round(130*scale)
         ratio = min(available_w/display.shape[1], available_h/display.shape[0])
         if ratio > 0:
@@ -130,9 +156,11 @@ def video_frame(image, quad, crop, rect, tracks, record, config, total):
             result[sy:sy+small.shape[0], sx:sx+small.shape[1]] = small
         if temporal:
             settings = config['tracking']
-            lines = [f'New tracks: {settings["confirmation_hits"]} hits / {settings["confirmation_window"]} frames',
-                     f'Model target gap: {record["target_tracking"]["model_gap_frames"]/record["fps"]:.2f}s',
-                     'Previous evidence is held briefly.']
+            tracking_fps = record.get('analysis_fps', record['fps']) if adaptive else record['fps']
+            frame_unit = 'analysis frames' if adaptive else 'frames'
+            lines = [f'New tracks: {settings["confirmation_hits"]} hits / {settings["confirmation_window"]} {frame_unit}',
+                     f'Model target gap: {record["target_tracking"]["model_gap_frames"]/tracking_fps:.2f}s',
+                     'Confirmed impacts follow the target.' if adaptive else 'Previous evidence is held briefly.']
         else:
             lines = [f'Target confidence >= {config["target"]["confidence"]:.2f}',
                      f'Impact confidence >= {config["bullet"]["confidence"]:.2f}', 'Independent current-frame detections.']
