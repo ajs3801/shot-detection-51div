@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>탄착군 판정 AI 결과</title>
+<meta name="description" content="사격 영상에서 표적지와 탄착을 찾고 1cm 격자로 탄착군 지름을 재는 AI 판정 시스템의 결과 발표 페이지입니다.">
+<meta property="og:title" content="탄착군 판정 AI 결과">
+<meta property="og:description" content="실내 사격장 자동 탄착군 분석 시스템. 성균관대학교 AI중심대학사업단 × 육군 51사단">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23181818'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23E3B341' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23E3B341'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE  work: a results briefing for a university and army audience, calm and exact
+   IDEA   the range officer's scoring card: a 25m zeroing target, its printed 1cm grid, a group circle drawn on it
+   PICTURE the real clip with the model's overlays redrawn live, beside a scoring card that plots the group in cm
+   COLOUR  night range: ground #181818, panels #1F1F1F, video on #000, one accent of target paper amber #E3B341, red only for fail
+   TYPE    IBM Plex Sans KR for all text (Hangul), Geist Mono only for measured numbers
+   LAYOUT  laptop: title row with three figures, then player and scoring card side by side; phone: title, player, controls, card */
+:root{--bg:#181818;--p1:#1F1F1F;--p2:#272727;--line:#313131;--ink:#F2F0EA;--ink2:#A9A69F;--acc:#E3B341;--bad:#E5675C;--ease:cubic-bezier(0.22,1,0.36,1);color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,sans-serif;font-size:16px;line-height:24px;overflow-x:clip;word-break:keep-all}
+a{color:inherit}
+h1,h2,h3,h4,p{margin:0}
+h1,h2,h3,h4{text-wrap:balance}
+p{text-wrap:pretty}
+.heading-1{font-size:60px;line-height:60px;font-weight:600;letter-spacing:-.02em}
+.heading-3{font-size:36px;line-height:40px;font-weight:600;letter-spacing:-.02em}
+.heading-5{font-size:24px;line-height:32px;font-weight:600}
+.title-2{font-size:18px;line-height:28px;font-weight:500}
+.title-3{font-size:16px;line-height:24px;font-weight:500}
+.title-4{font-size:14px;line-height:20px;font-weight:500}
+.body-3{font-size:16px;line-height:24px;font-weight:400}
+.body-6{font-size:14px;line-height:20px;font-weight:400}
+.button-md{font-size:16px;line-height:24px;font-weight:600}
+.button-sm{font-size:14px;line-height:20px;font-weight:600}
+.caption-2{font-size:14px;line-height:20px;font-weight:400;color:var(--ink2)}
+.num{font-family:"Geist Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.muted{color:var(--ink2)}
+.wrap{max-width:1240px;margin:0 auto}
+.band{padding:96px max(5vw,16px)}
+.skip{position:absolute;left:16px;top:-48px;background:var(--acc);color:#181818;padding:8px 12px;border-radius:8px;z-index:60}
+.skip:focus{top:16px}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.nav{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--line);border-radius:16px;background:rgba(24,24,24,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.nav a{text-decoration:none;padding:8px 12px;border-radius:12px;color:var(--ink2);transition:color 300ms var(--ease),background 300ms var(--ease)}
+.nav a:hover{color:var(--ink);background:var(--p2)}
+.nav a.on{color:var(--ink);background:var(--p2)}
+.nav .brand{color:var(--ink);display:flex;align-items:center;gap:8px}
+.menu{display:none;width:44px;height:44px;border:0;background:transparent;border-radius:12px;cursor:pointer;position:relative}
+.menu i{position:absolute;left:12px;width:20px;height:2px;background:var(--ink);transition:transform 500ms var(--ease),opacity 300ms var(--ease)}
+.menu i:nth-child(1){top:15px}.menu i:nth-child(2){top:21px}.menu i:nth-child(3){top:27px}
+.menu[aria-expanded=true] i:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.menu[aria-expanded=true] i:nth-child(2){opacity:0}
+.menu[aria-expanded=true] i:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(24,24,24,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);padding:96px 24px 24px;display:none;flex-direction:column;gap:8px}
+.sheet.open{display:flex}
+.sheet a{text-decoration:none;padding:12px 0;border-bottom:1px solid var(--line);opacity:0;transform:translateY(24px);transition:opacity 500ms var(--ease),transform 500ms var(--ease)}
+.sheet.show a{opacity:1;transform:none}
+.hero{padding-top:128px;padding-bottom:48px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr)}
+.grad{background:linear-gradient(90deg,#FFFFFF,#9B9B9B);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{max-width:680px;margin-top:24px;color:var(--ink2)}
+.cta-row{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-top:32px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;border:0;background:var(--acc);color:#181818;cursor:pointer;text-decoration:none;transition:background 300ms var(--ease),transform 300ms var(--ease)}
+.btn:hover{background:#EBC362}
+.btn:active{transform:scale(.98)}
+.demo{padding-top:0}
+.demo-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}
+.tools{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-bottom:12px}
+.seg{display:inline-flex;padding:4px;gap:4px;background:var(--p1);border:1px solid var(--line);border-radius:12px}
+.seg button{min-height:40px;padding:8px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink2);cursor:pointer;font:inherit;transition:background 300ms var(--ease),color 300ms var(--ease)}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed=true]{background:var(--p2);color:var(--ink)}
+.stage{position:relative;aspect-ratio:16/9;background:#000;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.cam{position:absolute;inset:0;transform-origin:0 0;transition:transform 500ms var(--ease)}
+.cam video,.cam svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cam svg{pointer-events:none}
+.cam svg text{paint-order:stroke;stroke:#000;stroke-opacity:.7;font-family:"Geist Mono",ui-monospace,monospace;font-weight:600}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink2);text-align:center;padding:24px}
+.loading.miss{inset:auto 0 0 0;padding:12px 16px;background:rgba(0,0,0,.7)}
+.loading[hidden]{display:none}
+.bar{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:12px;margin-top:12px}
+.play{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--p1);color:var(--ink);cursor:pointer;display:grid;place-items:center;transition:background 300ms var(--ease)}
+.play:hover{background:var(--p2)}
+.play:active{transform:scale(.98)}
+.tl{position:relative;height:84px;cursor:pointer;touch-action:none;background:var(--p1);border:1px solid var(--line);border-radius:12px}
+.tl svg{position:absolute;inset:0;width:100%;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.legend span[hidden]{display:none}
+.sw{width:12px;height:12px;display:inline-block;border-radius:2px}
+.srcline{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin-bottom:12px}
+.linkbtn{background:none;border:0;color:var(--acc);font:inherit;cursor:pointer;padding:0;min-height:44px}
+.linkbtn:hover{text-decoration:underline}
+.stage{margin-inline:auto}
+.up{margin-top:24px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:24px;align-items:start;padding:24px}
+.drop{position:relative;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;text-align:center;min-height:120px;border:1px dashed #4A4A4A;border-radius:12px;padding:24px;cursor:pointer;transition:border-color 300ms var(--ease),background 300ms var(--ease)}
+.drop:hover,.drop.over{border-color:var(--acc);background:#1A1A16}
+.drop:focus-within{outline:2px solid var(--acc);outline-offset:2px}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.drop.off{cursor:not-allowed;opacity:.6}
+.up-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-top:12px}
+.btn:disabled{background:var(--p2);color:var(--ink2);cursor:not-allowed}
+.prog{margin-top:12px;display:grid;gap:8px}
+.prog[hidden],.err[hidden]{display:none}
+.ptrack{height:8px;background:var(--p2);border-radius:4px;overflow:hidden}
+.pfill{height:100%;width:0;background:var(--acc);transition:width 500ms var(--ease)}
+.err{color:#F2B8B0;margin-top:12px;white-space:pre-line}
+.card{background:var(--p1);border:1px solid var(--line);border-radius:16px;padding:16px}
+.verdict{border-radius:8px;padding:16px;background:var(--p2);transition:background 300ms var(--ease),color 300ms var(--ease)}
+.verdict.pass{background:var(--acc);color:#181818}
+.verdict.pass .caption-2{color:#3A3221}
+.verdict.fail{background:#3A1F1C;color:#FFD9D4}
+.verdict.fail .caption-2{color:#F2B8B0}
+.verdict .big{font-family:"Geist Mono",ui-monospace,monospace;font-size:48px;line-height:48px;font-weight:500;margin-top:8px;white-space:nowrap}
+.limit{margin-top:16px}
+.limit label{display:flex;justify-content:space-between;gap:8px}
+input[type=range]{width:100%;height:44px;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--acc);margin-top:-8px;border:0}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--acc);border:0}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.kv div{background:var(--p2);border-radius:8px;padding:12px}
+.kv b{display:block;font-family:"Geist Mono",ui-monospace,monospace;font-weight:500;font-size:20px;line-height:28px}
+.plot{position:relative;aspect-ratio:1;margin-top:16px;background:#181818;border-radius:8px}
+.plot svg{position:absolute;inset:0;width:100%;height:100%}
+.shots{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:4px}
+.shots li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border-radius:8px;background:var(--p2);transition:opacity 300ms var(--ease)}
+.shots li.wait{opacity:.4}
+.dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--acc);color:#181818;font-family:"Geist Mono",ui-monospace,monospace;font-size:14px;font-weight:600}
+.note{margin-top:16px}
+.sec-head{display:grid;grid-template-columns:minmax(0,680px) minmax(0,1fr);gap:48px;align-items:end;margin-bottom:48px}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.step{background:var(--p1);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.step svg{width:100%;height:auto;display:block;border-radius:8px;background:#181818}
+.spec{margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--ink2);font-size:14px;line-height:20px}
+td.r,th.r{text-align:right}
+tbody tr:hover{background:var(--p1)}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px}
+.bars{display:grid;gap:16px;margin-top:24px}
+.brow{display:grid;grid-template-columns:120px minmax(0,1fr) 72px;gap:12px;align-items:center}
+.btrack{height:24px;background:var(--p1);border-radius:4px;overflow:hidden}
+.bfill{height:100%;background:var(--ink2);border-radius:4px}
+.bfill.a{background:var(--acc)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-bottom:48px}
+.stat{background:var(--p1);border:1px solid var(--line);border-radius:16px;padding:24px}
+.stat b{display:block;font-family:"Geist Mono",ui-monospace,monospace;font-size:48px;line-height:48px;font-weight:500;white-space:nowrap}
+.stat p{margin-top:12px}
+.pill{display:inline-block;padding:2px 8px;border-radius:6px;font-size:14px;line-height:20px;font-weight:600}
+.pill.ok{background:var(--acc);color:#181818}
+.pill.no{background:#3A1F1C;color:#FFD9D4}
+.final{text-align:left}
+.final .box{background:var(--p1);border:1px solid var(--line);border-radius:24px;padding:48px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:24px}
+footer{padding:48px max(5vw,16px);border-top:1px solid var(--line)}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px}
+.rv{transition:opacity 700ms var(--ease),transform 700ms var(--ease)}
+.rv.pre{opacity:0;transform:translateY(32px)}
+@media (max-width:1100px){.demo-grid{grid-template-columns:minmax(0,1fr)}.side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.side .plot{margin-top:0}}
+@media (max-width:900px){.up{grid-template-columns:minmax(0,1fr)}.hero-grid,.sec-head,.cols{grid-template-columns:minmax(0,1fr);gap:32px}.steps,.stats{grid-template-columns:minmax(0,1fr)}.reveal p{font-size:36px;line-height:40px}}
+@media (max-width:600px){.bar{grid-template-columns:auto minmax(0,1fr)}.tl{grid-column:1/-1}.band{padding:64px 16px}.hero{padding-top:96px}.heading-1{font-size:36px;line-height:40px}.heading-3{font-size:30px;line-height:36px}.nav{left:16px;right:16px;transform:none;justify-content:space-between}.nav .lk{display:none}.menu{display:block}.figs{grid-template-columns:minmax(0,1fr);gap:16px}.figs b{font-size:24px;line-height:32px}.side{grid-template-columns:minmax(0,1fr)}.stat b{font-size:36px;line-height:40px}.final .box{padding:24px}.brow{grid-template-columns:88px minmax(0,1fr) 64px}.reveal p{font-size:30px;line-height:36px}table{font-size:14px}th,td{padding:8px 4px}.tools .seg{width:100%}.tools .seg button{flex:1}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}.rv.pre{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<nav class="nav" aria-label="주요 메뉴">
+  <a class="brand title-4" href="#top"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5" fill="none" stroke="#E3B341" stroke-width="2"/><circle cx="10" cy="10" r="2" fill="#E3B341"/></svg>탄착군 판정 AI</a>
+  <a class="lk title-4" href="#demo">데모</a>
+  <a class="lk title-4" href="#upload">영상 분석</a>
+  <a class="lk title-4" href="#how">동작 방식</a>
+  <a class="lk title-4" href="#results">결과</a>
+  <button class="menu" id="menuBtn" aria-label="메뉴 열기" aria-expanded="false" aria-controls="sheet"><i></i><i></i><i></i></button>
+</nav>
+<div class="sheet" id="sheet">
+  <a class="heading-5" href="#demo">데모</a>
+  <a class="heading-5" href="#upload">영상 분석</a>
+  <a class="heading-5" href="#how">동작 방식</a>
+  <a class="heading-5" href="#results">결과</a>
+  <a class="heading-5" href="https://github.com/ajs3801/shot-detection-51div">GitHub 저장소</a>
+</div>
+
+<main id="main">
+<header class="band hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <h1 class="heading-1 grad">실내 사격장<br>자동 탄착군 분석 시스템</h1>
+      <p class="title-2 sub">표적지와 탄착은 AI 모델이 찾고, 크기는 표적지에 인쇄된 1cm 격자로 잽니다. 모든 탄착을 감싸는 가장 작은 원의 지름이 기준 이하면 합격입니다.</p>
+      <div class="cta-row">
+        <button class="btn button-md" id="heroPlay"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/></svg>데모 영상 재생</button>
+        <span class="caption-2">성균관대학교 AI중심대학사업단 × 육군 51사단</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="band demo" id="demo" aria-label="데모">
+  <div class="wrap demo-grid">
+    <div>
+      <div class="srcline"><span class="title-3 num" id="srcName">clip_01_04.mp4</span><span class="caption-2" id="srcKind">예시 영상</span><button class="linkbtn title-4" id="backSample" hidden>예시 영상으로 돌아가기</button></div>
+      <div class="tools">
+        <div class="seg" role="group" aria-label="분석 모드">
+          <button class="title-4 pb" id="pB27" aria-pressed="true">실시간</button>
+          <button class="title-4 pb" id="pA30" aria-pressed="false">저장 영상</button>
+        </div>
+        <div class="seg" role="group" aria-label="화면 확대">
+          <button class="title-4" data-z="full" aria-pressed="false">전체</button>
+          <button class="title-4" data-z="target" aria-pressed="false">표적지</button>
+          <button class="title-4" data-z="group" aria-pressed="true">탄착군</button>
+        </div>
+      </div>
+      <div class="stage" id="stage">
+        <div class="cam" id="cam">
+          <video id="vid" muted playsinline preload="auto" aria-label="사격 영상"></video>
+          <svg id="ov" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="loading body-6" id="loading">결과 데이터를 불러오는 중입니다</div>
+      </div>
+      <div class="bar">
+        <button class="play" id="play" aria-label="재생"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" id="playIco"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/></svg></button>
+        <span class="num body-6" id="clock">00:26.8 / 00:26.8</span>
+        <div class="tl" id="tl" role="slider" tabindex="0" aria-label="영상 위치" aria-valuemin="0" aria-valuemax="26.8" aria-valuenow="26.8"><svg id="tlsvg"></svg></div>
+      </div>
+      <div class="legend caption-2">
+        <span id="legMark"><svg width="12" height="12" aria-hidden="true"><path d="M6 1v10" stroke="#F2F0EA" stroke-width="2"/></svg>탄착이 처음 보인 프레임 (사람 라벨)</span>
+        <span><i class="sw" style="background:#E3B341;border-radius:50%"></i>모델이 탄착을 확정한 시각</span>
+        <span><i class="sw" style="background:#A9A69F"></i>모델을 실제로 실행한 프레임</span>
+      </div>
+      <p class="body-6 muted note" id="presetNote"></p>
+    </div>
+    <aside class="side" aria-label="판정 카드">
+      <div class="card">
+        <div class="verdict" id="verdict">
+          <div class="title-4" id="vTitle">측정 중</div>
+          <div class="big" id="vDiam">— cm</div>
+          <div class="caption-2" id="vSub">탄착군 지름</div>
+        </div>
+        <div class="limit">
+          <label class="title-4" for="lim"><span>합격 기준 (탄착군 지름)</span><span class="num" id="limTxt">5.5 cm 이하</span></label>
+          <input type="range" id="lim" min="3" max="8" step="0.5" value="5.5">
+        </div>
+        <div class="kv">
+          <div><span class="caption-2">확정 탄착</span><b id="kCount">0발</b></div>
+          <div><span class="caption-2">가장 먼 두 탄착</span><b id="kPair">—</b></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="title-4">표적지 좌표 (격자 1칸 = 1cm)</div>
+        <div class="plot" id="plot"><svg id="plotsvg" aria-label="탄착 위치 도표"></svg></div>
+        <ul class="shots" id="shots"></ul>
+      </div>
+    </aside>
+  </div>
+  <div class="wrap">
+    <div class="card up" id="upload">
+      <div>
+        <h2 class="heading-5">내 영상 분석하기</h2>
+        <p class="body-6 muted" id="upHint" style="margin-top:8px">사격 영상을 올리면 같은 모델로 분석해 위 화면에 결과를 그립니다. 분석에는 영상 길이의 1.5배에서 5배쯤 걸립니다.</p>
+      </div>
+      <div>
+        <label class="drop" id="drop" for="upFile"><input type="file" id="upFile" accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm"><span class="title-3" id="dropTxt">영상을 끌어다 놓거나 눌러서 고르세요</span><span class="caption-2" id="dropSub">mp4 권장 · 최대 500MB</span></label>
+        <div class="up-row">
+          <div class="seg" role="group" aria-label="업로드 분석 모드"><button class="title-4" data-m="b27" aria-pressed="true">실시간</button><button class="title-4" data-m="a30" aria-pressed="false">저장 영상</button></div>
+          <button class="btn button-md" id="upGo" disabled>분석 시작</button>
+        </div>
+        <div class="prog" id="prog" hidden><div class="ptrack"><div class="pfill" id="pfill"></div></div><span class="body-6" id="pTxt" aria-live="polite"></span></div>
+        <p class="body-6 err" id="upErr" role="alert" hidden></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="band" id="how">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <h2 class="heading-3">파이프라인</h2>
+      <p class="body-3 muted">두 AI 모델이 할 일을 나눠 맡고, 모델을 부르지 않는 프레임은 화면 움직임을 따라가는 추적으로 이어 갑니다. 표적 중심은 쓰지 않고 탄착끼리의 거리만 잽니다.</p>
+    </div>
+    <div class="steps">
+      <article class="step rv">
+        <svg viewBox="0 0 320 180" aria-hidden="true"><rect x="0" y="0" width="320" height="180" fill="#181818"/><path d="M104 24L214 20L220 162L100 166Z" fill="#2A2925" stroke="#F2F0EA" stroke-width="2"/><g stroke="#3A3933" stroke-width="1"><path d="M120 50V150M132 50V150M144 50V150M156 50V150M168 50V150M180 50V150M192 50V150"/></g><path d="M100 166L104 24" stroke="#E3B341" stroke-width="2" stroke-dasharray="4 4" transform="translate(-14 0)"/><path d="M214 20L220 162" stroke="#E3B341" stroke-width="2" stroke-dasharray="4 4" transform="translate(14 0)"/></svg>
+        <h3 class="heading-5">표적지 찾기</h3>
+        <p class="body-3 muted">표적지 인식 모델이 표적지 윤곽을 찾습니다. 모델을 부르지 않는 프레임에서는 앞 화면과 비교해 표적지가 움직인 만큼 윤곽을 옮겨, 화면이 흔들려도 위치를 놓치지 않습니다.</p>
+      </article>
+      <article class="step rv">
+        <svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" fill="#181818"/><rect x="96" y="24" width="128" height="132" rx="4" fill="#2A2925"/><g fill="#0E0E0E"><circle cx="140" cy="96" r="5"/><circle cx="170" cy="82" r="5"/><circle cx="160" cy="118" r="5"/><circle cx="196" cy="104" r="5"/></g><g fill="none" stroke-width="2"><rect x="130" y="86" width="20" height="20" stroke="#E3B341"/><rect x="160" y="72" width="20" height="20" stroke="#E3B341"/><rect x="150" y="108" width="20" height="20" stroke="#E3B341"/><rect x="186" y="94" width="20" height="20" stroke="#F2F0EA" stroke-dasharray="4 3"/></g></svg>
+        <h3 class="heading-5">탄착 찾기</h3>
+        <p class="body-3 muted">표적지 영역만 잘라 탄착 검출 모델이 탄착을 찾습니다. 새 후보가 보이면 다음 프레임을 연달아 추론하고, 여러 번 반복해 보인 것만 탄착으로 확정합니다.</p>
+      </article>
+      <article class="step rv">
+        <svg viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" fill="#181818"/><g stroke="#313131" stroke-width="1"><path d="M60 20V160M90 20V160M120 20V160M150 20V160M180 20V160M210 20V160M240 20V160M270 20V160M40 30H280M40 60H280M40 90H280M40 120H280M40 150H280"/></g><circle cx="160" cy="92" r="52" fill="none" stroke="#E3B341" stroke-width="2"/><path d="M196 52L126 128" stroke="#F2F0EA" stroke-width="2"/><g fill="#E3B341"><circle cx="196" cy="52" r="6"/><circle cx="126" cy="128" r="6"/><circle cx="190" cy="120" r="6"/><circle cx="140" cy="70" r="6"/></g></svg>
+        <h3 class="heading-5">탄착군 재기</h3>
+        <p class="body-3 muted">표적지에 인쇄된 1cm 격자 선을 찾아 원근을 보정합니다. 탄착 중심 사이 거리와 모든 탄착을 감싸는 최소 포괄원의 지름을 cm로 계산합니다.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="presets" style="background:#1F1F1F">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <h2 class="heading-3">실시간 모드는 분석 시간을 68% 줄였습니다</h2>
+      <p class="body-3 muted">clip_01_04를 같은 PC에서 두 모드로 분석했습니다. 실시간 모드는 저장 영상 모드와 같은 탄착 4발을 찾았고, 탄착군 지름 차이는 0.09cm에 그쳤습니다.</p>
+    </div>
+    <div class="cols">
+      <div class="rv">
+        <h3 class="title-2">전체 분석 시간</h3>
+        <div class="bars">
+          <div class="brow"><span class="body-6">실시간</span><div class="btrack"><div class="bfill a" style="width:32.0%"></div></div><span class="num body-6" style="text-align:right">39.9초</span></div>
+          <div class="brow"><span class="body-6">저장 영상</span><div class="btrack"><div class="bfill" style="width:100%"></div></div><span class="num body-6" style="text-align:right">124.5초</span></div>
+        </div>
+        <h3 class="title-2" style="margin-top:48px">프레임당 평균 분석 시간</h3>
+        <div class="bars">
+          <div class="brow"><span class="body-6">실시간</span><div class="btrack"><div class="bfill a" style="width:32.0%"></div></div><span class="num body-6" style="text-align:right">49.6ms</span></div>
+          <div class="brow"><span class="body-6">저장 영상</span><div class="btrack"><div class="bfill" style="width:100%"></div></div><span class="num body-6" style="text-align:right">154.9ms</span></div>
+        </div>
+      </div>
+      <div class="scroll rv">
+        <table>
+          <thead><tr><th>clip_01_04 결과</th><th class="r">실시간</th><th class="r">저장 영상</th></tr></thead>
+          <tbody>
+            <tr><td>찾은 탄착</td><td class="r num">4발</td><td class="r num">4발</td></tr>
+            <tr><td>탄착군 지름</td><td class="r num">4.17cm</td><td class="r num">4.26cm</td></tr>
+            <tr><td>가장 먼 두 탄착</td><td class="r num">4.02cm</td><td class="r num">4.09cm</td></tr>
+            <tr><td>1발 확정</td><td class="r num">6.1초</td><td class="r num">6.2초</td></tr>
+            <tr><td>2발 확정</td><td class="r num">10.4초</td><td class="r num">10.6초</td></tr>
+            <tr><td>3발 확정</td><td class="r num">13.4초</td><td class="r num">13.4초</td></tr>
+            <tr><td>4발 확정</td><td class="r num">16.5초</td><td class="r num">16.6초</td></tr>
+            <tr><td>판정 (기준 5.5cm)</td><td class="r"><span class="pill ok">합격</span></td><td class="r"><span class="pill ok">합격</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="results">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <h2 class="heading-3">표적지 안 탄착 수 94.7%, 위치 97.3% 일치</h2>
+      <p class="body-3 muted">판정 대상인 표적지 안 탄착을 기준으로, 검증 영상 2개와 테스트 영상 2개의 19개 시점에서 사람이 표시한 정답과 실시간 모드 결과를 비교했습니다.</p>
+    </div>
+    <div class="stats">
+      <div class="stat rv"><b>94.7%</b><p class="body-6 muted">탄착 수 일치 (19개 시점 중 18개). 테스트 영상 2개는 10개 시점 모두 맞혔습니다.</p></div>
+      <div class="stat rv"><b>97.3%</b><p class="body-6 muted">탄착 위치 일치 (라벨된 탄착 37개 중 36개). 추적한 탄착의 중심이 사람이 표시한 정답 박스 안에 들어왔습니다.</p></div>
+      <div class="stat rv"><b>0.25초</b><p class="body-6 muted">탄착이 생긴 뒤 확정까지 걸린 시간의 중앙값 (clip_01_04, 영상 시간 기준).</p></div>
+    </div>
+    <div class="cols">
+      <div class="rv">
+        <h3 class="title-2">clip_01_04 탄착별 확정 지연</h3>
+        <p class="body-6 muted">영상 시간 기준입니다. 처음 보인 프레임은 사람이 확인한 값입니다.</p>
+        <div class="scroll" style="margin-top:16px">
+          <table>
+            <thead><tr><th>탄착</th><th class="r">처음 보임</th><th class="r">확정</th><th class="r">지연</th></tr></thead>
+            <tbody>
+              <tr><td>1발</td><td class="r num">3.93초</td><td class="r num">6.07초</td><td class="r num">2.13초</td></tr>
+              <tr><td>2발</td><td class="r num">10.13초</td><td class="r num">10.40초</td><td class="r num">0.27초</td></tr>
+              <tr><td>3발</td><td class="r num">13.53초</td><td class="r num">13.40초</td><td class="r num">라벨 오차 범위</td></tr>
+              <tr><td>4발</td><td class="r num">16.23초</td><td class="r num">16.47초</td><td class="r num">0.23초</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="rv">
+        <h3 class="title-2">영상별 판정 (실시간 모드)</h3>
+        <p class="body-6 muted">합격 여부는 위 데모의 합격 기준을 따라 바뀝니다. 현재 기준 <span class="num" id="limTxt2">5.5cm</span> 이하.</p>
+        <div class="scroll" style="margin-top:16px">
+          <table>
+            <thead><tr><th>영상</th><th class="r">길이</th><th class="r">탄착</th><th class="r">라벨 일치</th><th class="r">지름</th><th class="r">판정</th></tr></thead>
+            <tbody id="clipRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band final">
+  <div class="wrap box rv">
+    <div>
+      <h2 class="heading-3">직접 확인해 보세요</h2>
+      <p class="body-3 muted" style="margin-top:12px">실시간과 저장 영상 모드를 바꿔 가며 다시 볼 수 있습니다.</p>
+    </div>
+    <button class="btn button-md" id="endPlay"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/></svg>데모 영상 재생</button>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="body-6 muted">성균관대학교 AI중심대학사업단 × 육군 51사단 · 사격 탄착군 판정 프로젝트</span>
+    <a class="body-6" href="https://github.com/ajs3801/shot-detection-51div">GitHub 저장소 ajs3801/shot-detection-51div</a>
+  </div>
+</footer>
+
+<script>
+{
+const NOTES={b27:'실시간 모드: 사격과 동시에 결과를 보여 주도록 모델 호출을 줄인 빠른 모드입니다. 실험 PC에서 분석한 프레임별 결과를 원본 영상 위에 그립니다.',a30:'저장 영상 모드: 녹화된 영상을 더 촘촘하게 분석해 정밀하게 판정하는 모드입니다. 실험 PC에서 분석한 프레임별 결과를 원본 영상 위에 그립니다.'};
+const UPNOTES={b27:'실시간 모드로 분석한 결과입니다.',a30:'저장 영상 모드로 분석한 결과입니다.'};
+const MODE_API={b27:'realtime',a30:'saved'},MODE_KO={b27:'실시간',a30:'저장 영상'};
+const CLIPS=[['clip_01_04','검증',26.8,4,'4 / 5',4.166],['clip_03_04','검증',32.5,3,'4 / 4',8.520],['clip_01_08','테스트',29.0,5,'6 / 6',7.668],['clip_04_01','테스트',133.7,3,'4 / 4',2.986]];
+const $=id=>document.getElementById(id);
+const vid=$('vid'),ov=$('ov'),cam=$('cam'),stage=$('stage'),tl=$('tl'),tlsvg=$('tlsvg'),plotsvg=$('plotsvg');
+let S=null,SAMPLE=null,UP=null,preset='b27',zoom='group',limit=5.5,cur=-1,first={},lastRaw={},FOCUS={},PD={cx:0,cy:0,span:9},api=null,file=null,upMode='b27',busy=false;
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const fmtT=t=>{const s=Math.max(0,t);return String(Math.floor(s/60)).padStart(2,'0')+':'+(s%60).toFixed(1).padStart(4,'0')};
+const fr=()=>S.modes[preset];
+const now=()=>S&&S.missing?S.t:vid.currentTime;
+const idx=()=>clamp(Math.floor(now()*S.fps+1e-3),0,S.last);
+
+function mec(p){
+  if(!p.length)return null;if(p.length===1)return{x:p[0].x,y:p[0].y,r:0};
+  const ins=c=>p.every(q=>Math.hypot(q.x-c.x,q.y-c.y)<=c.r+1e-6);let best=null;
+  const con=c=>{if(ins(c)&&(!best||c.r<best.r))best=c};
+  for(let i=0;i<p.length;i++)for(let j=i+1;j<p.length;j++){const a=p[i],b=p[j];con({x:(a.x+b.x)/2,y:(a.y+b.y)/2,r:Math.hypot(a.x-b.x,a.y-b.y)/2});
+    for(let k=j+1;k<p.length;k++){const c=p[k],d=2*(a.x*(b.y-c.y)+b.x*(c.y-a.y)+c.x*(a.y-b.y));if(Math.abs(d)<1e-9)continue;
+      const a2=a.x*a.x+a.y*a.y,b2=b.x*b.x+b.y*b.y,c2=c.x*c.x+c.y*c.y,ux=(a2*(b.y-c.y)+b2*(c.y-a.y)+c2*(a.y-b.y))/d,uy=(a2*(c.x-b.x)+b2*(a.x-c.x)+c2*(b.x-a.x))/d;con({x:ux,y:uy,r:Math.hypot(a.x-ux,a.y-uy)})}}
+  return best;
+}
+function firstConfirms(f){const o={};f.forEach((x,i)=>x.tk.forEach(t=>{if(!(t[0] in o))o[t[0]]=i}));return o}
+function lastGroup(f){for(let i=f.length-1;i>=0;i--){const g=f[i].g;if(g&&g.p&&g.p.length)return g}return null}
+function bbox(a){const xs=[],ys=[];for(let j=0;j<a.length;j+=2){xs.push(a[j]);ys.push(a[j+1])}return{x0:Math.min(...xs),x1:Math.max(...xs),y0:Math.min(...ys),y1:Math.max(...ys)}}
+
+function prepare(){
+  const f=fr();let q=null,b=null;
+  for(let i=f.length-1;i>=0&&!(q&&b);i--){if(!q&&f[i].q)q=f[i].q;const g=f[i].g;if(!b&&g&&g.c&&g.p&&g.p.length>1)b=g.c[1]}
+  FOCUS.full=[S.w/2,S.h/2,1];
+  if(q){const r=bbox(q);FOCUS.target=[(r.x0+r.x1)/2,(r.y0+r.y1)/2,clamp(S.h*.92/(r.y1-r.y0),1,2.5)]}else FOCUS.target=FOCUS.full;
+  if(b){const r=bbox(b);FOCUS.group=[(r.x0+r.x1)/2,(r.y0+r.y1)/2,clamp(S.h*.42/Math.max(r.x1-r.x0,r.y1-r.y0,40),1.5,3.4)]}else FOCUS.group=FOCUS.target;
+  const g=lastGroup(f),pts=g?g.p.map(p=>({x:p[1],y:p[2]})):[],c=mec(pts);
+  PD=c?{cx:c.x,cy:c.y,span:Math.max(9,Math.ceil(c.r*2+3))}:{cx:0,cy:0,span:9};
+  first=firstConfirms(f);lastRaw={};
+}
+
+function applyZoom(){
+  if(!S)return;const [px,py,z]=FOCUS[zoom],W=stage.clientWidth,H=stage.clientHeight,s=W/S.w;
+  let tx=W/2-px*s*z,ty=H/2-py*s*z;tx=Math.min(0,Math.max(W-W*z,tx));ty=Math.min(0,Math.max(H-H*z,ty));
+  cam.style.transform=`translate(${tx}px,${ty}px) scale(${z})`;render(true);
+}
+
+function drawOverlay(i,f){
+  const z=FOCUS[zoom][2],k=S.w/(stage.clientWidth*z),fs=14*k,sw='vector-effect="non-scaling-stroke"';
+  let h='';
+  if(f.q){h+=`<polygon points="${f.q.join(' ')}" fill="none" stroke="#F2F0EA" stroke-opacity=".75" stroke-width="2" ${sw}/>`;
+    h+=`<text x="${f.q[0]}" y="${f.q[1]-8*k}" font-size="${fs}" fill="#F2F0EA">표적지 · ${f.tr?'모델':'추적'}</text>`}
+  if(f.br&&f.rb)lastRaw={i,b:f.rb};
+  if(lastRaw.b&&i-lastRaw.i>=0&&i-lastRaw.i<Math.round(S.fps/5))
+    lastRaw.b.forEach(b=>{const hit=f.tk.some(t=>Math.max(0,Math.min(b[2],t[3])-Math.max(b[0],t[1]))*Math.max(0,Math.min(b[3],t[4])-Math.max(b[1],t[2]))>0);
+      if(!hit)h+=`<rect x="${b[0]}" y="${b[1]}" width="${b[2]-b[0]}" height="${b[3]-b[1]}" fill="none" stroke="#F2F0EA" stroke-width="1.5" stroke-dasharray="4 3" ${sw}/>`});
+  const g=f.g;
+  if(g&&g.c&&g.p&&g.p.length>1){h+=`<polygon points="${g.c[1].join(' ')}" fill="none" stroke="#E3B341" stroke-width="2" ${sw}/>`;
+    if(g.m){const a=g.p.find(p=>p[0]===g.m[0]),b=g.p.find(p=>p[0]===g.m[1]);if(a&&b)h+=`<line x1="${a[3]}" y1="${a[4]}" x2="${b[3]}" y2="${b[4]}" stroke="#F2F0EA" stroke-width="1.5" ${sw}/>`}
+    const r=bbox(g.c[1]);h+=`<text x="${r.x1+6*k}" y="${r.y0}" font-size="${fs*1.15}" fill="#E3B341">${g.c[0].toFixed(2)}cm</text>`}
+  f.tk.forEach(t=>{h+=`<rect x="${t[1]}" y="${t[2]}" width="${t[3]-t[1]}" height="${t[4]-t[2]}" fill="none" stroke="#E3B341" stroke-width="2" ${t[5]?'stroke-dasharray="5 3" stroke-opacity=".7"':''} ${sw}/>`;
+    h+=`<text x="${t[3]+3*k}" y="${t[4]}" font-size="${fs}" fill="#E3B341">${t[0]}</text>`});
+  ov.innerHTML=h;
+}
+
+function drawPlot(f){
+  const W=plotsvg.clientWidth,H=plotsvg.clientHeight;if(!W)return;
+  const {cx,cy,span}=PD,pad=20,sc=(Math.min(W,H)-pad*2)/span,X=x=>W/2+(x-cx)*sc,Y=y=>H/2+(y-cy)*sc;
+  let h='';
+  for(let v=Math.ceil(cx-span/2-1);v<=cx+span/2+1;v++)h+=`<line x1="${X(v)}" y1="0" x2="${X(v)}" y2="${H}" stroke="#2A2A2A"/>`;
+  for(let v=Math.ceil(cy-span/2-1);v<=cy+span/2+1;v++)h+=`<line x1="0" y1="${Y(v)}" x2="${W}" y2="${Y(v)}" stroke="#2A2A2A"/>`;
+  const pts=(f.g&&f.g.p)?f.g.p.map(p=>({id:p[0],x:p[1],y:p[2]})):[],c=pts.length>1?mec(pts):null;
+  if(c){h+=`<circle cx="${X(c.x)}" cy="${Y(c.y)}" r="${limit/2*sc}" fill="none" stroke="#A9A69F" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    h+=`<circle cx="${X(c.x)}" cy="${Y(c.y)}" r="${c.r*sc}" fill="rgba(227,179,65,.1)" stroke="#E3B341" stroke-width="2"/>`;
+    if(f.g.m){const a=pts.find(p=>p.id===f.g.m[0]),b=pts.find(p=>p.id===f.g.m[1]);if(a&&b)h+=`<line x1="${X(a.x)}" y1="${Y(a.y)}" x2="${X(b.x)}" y2="${Y(b.y)}" stroke="#F2F0EA" stroke-width="1.5"/>`}
+    const top=Y(c.y)-Math.max(limit/2,c.r)*sc-8,ly=top>18?top:Y(c.y)+Math.max(limit/2,c.r)*sc+20;
+    h+=`<text x="${X(c.x)}" y="${ly}" text-anchor="middle" font-size="14" fill="#A9A69F" style="paint-order:stroke;stroke:#181818;stroke-width:4px">기준 ${limit.toFixed(1)}cm</text>`}
+  pts.forEach(p=>{h+=`<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="10" fill="#E3B341"/><text x="${X(p.x)}" y="${Y(p.y)+5}" text-anchor="middle" font-size="13" font-weight="600" fill="#181818" font-family="Geist Mono,monospace">${p.id}</text>`});
+  if(!pts.length)h+=`<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="14" fill="#A9A69F">확정된 탄착이 아직 없습니다</text>`;
+  plotsvg.innerHTML=h;
+}
+
+function drawTimeline(i){
+  const W=tlsvg.clientWidth,H=tlsvg.clientHeight;if(!W||!S)return;
+  const L=W<520?8:96,R=12,X=n=>L+(W-L-R)*n/Math.max(1,S.last),f=fr();
+  let h='';
+  if(L>8)[[18,'탄착'],[44,'표적지 모델'],[68,'탄착 모델']].forEach(r=>h+=`<text x="12" y="${r[0]+5}" font-size="13" fill="#A9A69F" font-family="IBM Plex Sans KR,sans-serif">${r[1]}</text>`);
+  let tr='',br='';f.forEach((x,n)=>{if(x.tr)tr+=`M${X(n).toFixed(1)} 36v16`;if(x.br)br+=`M${X(n).toFixed(1)} 61v14`});
+  h+=`<path d="${tr}" stroke="#A9A69F" stroke-width="1.5"/><path d="${br}" stroke="#A9A69F" stroke-opacity=".6" stroke-width="1"/>`;
+  (S.marks||[]).forEach(m=>h+=`<line x1="${X(m)}" y1="8" x2="${X(m)}" y2="28" stroke="#F2F0EA" stroke-width="2"/>`);
+  Object.values(first).forEach(n=>h+=`<circle cx="${X(n)}" cy="18" r="6" fill="#E3B341"/>`);
+  h+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" stroke="#E3B341" stroke-width="2"/>`;
+  tlsvg.innerHTML=h;
+}
+
+function updateCard(i,f){
+  const g=f.g,np=g&&g.p?g.p.length:0,d=(g&&g.c&&np>1)?g.c[0]:null,end=i>=S.last-Math.ceil(S.fps*.1);
+  $('kCount').textContent=(f.n||0)+'발';
+  $('kPair').textContent=g&&g.m&&np>1?g.m[2].toFixed(2)+'cm':'—';
+  $('vDiam').textContent=d!=null?d.toFixed(2)+' cm':'— cm';
+  const v=$('verdict');v.className='verdict';
+  if(d==null){$('vTitle').textContent=end?'판정 불가':'탄착 대기';$('vSub').textContent=end?'확정된 탄착이 2발 미만입니다':'확정 탄착이 2발 이상이면 지름을 잽니다'}
+  else if(!end){$('vTitle').textContent='측정 중';$('vSub').textContent='영상이 끝나면 판정합니다 · 기준 '+limit.toFixed(1)+'cm'}
+  else if(d<=limit){v.classList.add('pass');$('vTitle').textContent='합격';$('vSub').textContent='기준 '+limit.toFixed(1)+'cm보다 '+(limit-d).toFixed(2)+'cm 작습니다'}
+  else{v.classList.add('fail');$('vTitle').textContent='불합격';$('vSub').textContent='기준 '+limit.toFixed(1)+'cm보다 '+(d-limit).toFixed(2)+'cm 큽니다'}
+  const pts=g&&g.p?Object.fromEntries(g.p.map(p=>[p[0],p])):{},lg=lastGroup(fr()),fin=lg?lg.p:[];
+  $('shots').innerHTML=fin.length?fin.map(p=>{const id=p[0],n=first[id],done=n!=null&&i>=n,q=pts[id]||p;
+    return `<li class="${done?'':'wait'}"><span class="dot">${id}</span><span class="body-6">${done?'확정 '+(n/S.fps).toFixed(1)+'초':'확인 전'}</span><span class="num body-6 muted">${done?`x ${q[1]>=0?'+':'−'}${Math.abs(q[1]).toFixed(2)} · y ${q[2].toFixed(2)}`:''}</span></li>`}).join(''):'<li class="wait"><span></span><span class="body-6">이 영상에서는 확정된 탄착이 없습니다</span><span></span></li>';
+}
+
+function render(force){
+  if(!S||!fr())return;const i=idx();if(i===cur&&!force)return;cur=i;const f=fr()[i];
+  drawOverlay(i,f);drawPlot(f);drawTimeline(i);updateCard(i,f);
+  $('clock').textContent=fmtT(now())+' / '+fmtT(S.dur);tl.setAttribute('aria-valuenow',now().toFixed(1));tl.setAttribute('aria-valuemax',S.dur.toFixed(1));
+}
+function loop(){render();if(!vid.paused){if(vid.requestVideoFrameCallback)vid.requestVideoFrameCallback(loop);else requestAnimationFrame(loop)}}
+function setIcon(){$('playIco').innerHTML=vid.paused?'<path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/>':'<path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"/>';$('play').setAttribute('aria-label',vid.paused?'재생':'일시정지')}
+function play(){if(!S||S.missing)return;if(vid.ended||idx()>=S.last-Math.ceil(S.fps*.1))vid.currentTime=0;const p=vid.play();if(p&&p.catch)p.catch(()=>{})}
+vid.addEventListener('play',()=>{setIcon();loop()});vid.addEventListener('pause',setIcon);vid.addEventListener('ended',()=>{setIcon();render(true)});
+vid.addEventListener('seeked',()=>render(true));vid.addEventListener('timeupdate',()=>{if(vid.paused)render()});
+vid.addEventListener('error',()=>{if(S&&S!==SAMPLE)showErr('이 브라우저에서 영상을 재생하지 못했습니다.')});
+$('play').addEventListener('click',()=>vid.paused?play():vid.pause());
+const goDemo=()=>{$('demo').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});play()};
+$('heroPlay').addEventListener('click',goDemo);$('endPlay').addEventListener('click',goDemo);
+
+function seekX(x){if(!S)return;const r=tl.getBoundingClientRect(),L=r.width<520?8:96,p=clamp((x-r.left-L)/(r.width-L-12),0,1),t=p*S.last/S.fps+.5/S.fps;if(S.missing){S.t=t;render(true)}else vid.currentTime=t}
+let drag=false;tl.addEventListener('pointerdown',e=>{drag=true;tl.setPointerCapture(e.pointerId);seekX(e.clientX)});
+tl.addEventListener('pointermove',e=>{if(drag)seekX(e.clientX)});tl.addEventListener('pointerup',()=>drag=false);
+tl.addEventListener('keydown',e=>{if(S&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){e.preventDefault();vid.currentTime=clamp(vid.currentTime+(e.key==='ArrowRight'?1:-1),0,S.dur)}});
+
+function syncButtons(){
+  ['b27','a30'].forEach(m=>{const b=$(m==='b27'?'pB27':'pA30');b.setAttribute('aria-pressed',String(m===preset));
+    b.textContent=MODE_KO[m]+(S&&!S.modes[m]?' 분석하기':'')});
+  $('presetNote').textContent=S===SAMPLE?NOTES[preset]:UPNOTES[preset];
+}
+function setPreset(p){
+  if(!S)return;
+  if(!S.modes[p]){if(S===UP&&UP.file&&api&&!busy){setUpMode(p);startJob(UP.file)}return}
+  preset=p;prepare();syncButtons();applyZoom();
+}
+$('pB27').addEventListener('click',()=>setPreset('b27'));$('pA30').addEventListener('click',()=>setPreset('a30'));
+document.querySelectorAll('[data-z]').forEach(b=>b.addEventListener('click',()=>{zoom=b.dataset.z;document.querySelectorAll('[data-z]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));applyZoom()}));
+
+function load(src,mode){
+  vid.pause();S=src;if(mode)preset=mode;if(!S.modes[preset])preset=S.modes.b27?'b27':'a30';
+  ov.setAttribute('viewBox',`0 0 ${S.w} ${S.h}`);stage.style.aspectRatio=`${S.w}/${S.h}`;stage.style.width=`min(100%, calc(72vh * ${(S.w/S.h).toFixed(4)}))`;
+  $('srcName').textContent=S.name;$('srcKind').textContent=S===SAMPLE?'예시 영상':'업로드한 영상';$('backSample').hidden=S===SAMPLE;$('legMark').hidden=!S.marks;
+  prepare();syncButtons();cur=-1;
+  const toEnd=()=>{vid.currentTime=Math.max(0,Math.min(vid.duration-.05,(S.last+.5)/S.fps));applyZoom()};
+  vid.style.display=S.missing?'none':'';const miss=$('loading');if(miss)miss.hidden=!S.missing;
+  if(S.missing){applyZoom();return}
+  const url=S.blobUrl||S.url;
+  if(vid.getAttribute('src')!==url){vid.addEventListener('loadedmetadata',toEnd,{once:true});vid.src=url}else toEnd();
+}
+function makeSource(o){const any=o.modes.b27||o.modes.a30;o.n=any.length;o.last=o.n-1;o.dur=o.n/o.fps;return o}
+$('backSample').addEventListener('click',()=>{if(SAMPLE)load(SAMPLE,'b27')});
+
+function clipRows(){$('clipRows').innerHTML=CLIPS.map(c=>{const ok=c[5]<=limit;return `<tr><td class="num">${c[0]}<br><span class="caption-2">${c[1]}</span></td><td class="r num">${c[2].toFixed(1)}초</td><td class="r num">${c[3]}발</td><td class="r num">${c[4]}</td><td class="r num">${c[5].toFixed(2)}cm</td><td class="r"><span class="pill ${ok?'ok':'no'}">${ok?'합격':'불합격'}</span></td></tr>`}).join('')}
+$('lim').addEventListener('input',e=>{limit=+e.target.value;$('limTxt').textContent=limit.toFixed(1)+' cm 이하';$('limTxt2').textContent=limit.toFixed(1)+'cm';clipRows();render(true)});
+clipRows();syncButtons();
+
+const ro=new ResizeObserver(()=>applyZoom());ro.observe(stage);
+const ro2=new ResizeObserver(()=>render(true));ro2.observe(plotsvg);ro2.observe(tlsvg);
+
+fetch('data.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{
+  SAMPLE=makeSource({name:'clip_01_04.mp4',url:'clip_01_04.mp4',fps:d.fps,w:1920,h:1080,marks:d.marks,modes:{b27:d.b27,a30:d.a30}});
+  $('loading').textContent='예시 영상을 불러오는 중입니다';
+  return fetch('clip_01_04.mp4').then(r=>{if(!r.ok)throw new Error(r.status);return r.blob()}).then(b=>{
+    SAMPLE.blobUrl=URL.createObjectURL(new Blob([b],{type:'video/mp4'}));
+  }).catch(()=>{SAMPLE.missing=true;SAMPLE.t=(SAMPLE.last+.5)/SAMPLE.fps}).then(()=>{
+    if(SAMPLE.missing){const m=$('loading');m.classList.add('miss');
+      m.innerHTML='<span>원본 영상은 공개하지 않아 분석 결과만 표시합니다. </span><label class="linkbtn" for="sampleFile">PC에 있는 clip_01_04.mp4로 재생</label><input type="file" id="sampleFile" accept="video/*,.mp4" hidden>';
+      $('sampleFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;SAMPLE.blobUrl=URL.createObjectURL(f);SAMPLE.missing=false;load(SAMPLE,preset)});
+    }else $('loading').remove();
+    load(SAMPLE,'b27')});
+}).catch(()=>{$('loading').textContent='결과 데이터를 불러오지 못했습니다. 페이지를 새로 고쳐 주세요.'});
+
+/* 업로드 분석: 분석 서버(server/app.py)에서 열었을 때만 켜집니다 */
+const upGo=$('upGo'),upFile=$('upFile'),drop=$('drop');
+function showErr(t){const e=$('upErr');e.textContent=t;e.hidden=!t}
+function setProg(p,t){$('prog').hidden=false;$('pfill').style.width=Math.round(p*100)+'%';$('pTxt').textContent=t}
+function setUpMode(m){upMode=m;document.querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===m)))}
+document.querySelectorAll('[data-m]').forEach(b=>b.addEventListener('click',()=>setUpMode(b.dataset.m)));
+function canStart(){upGo.disabled=!(api&&file&&!busy)}
+function pick(f){
+  showErr('');if(!f)return;
+  const okType=/^video\//.test(f.type)||/\.(mp4|mov|m4v|avi|mkv|webm)$/i.test(f.name);
+  if(!okType){file=null;showErr('영상 파일만 올릴 수 있습니다. mp4 파일을 권장합니다.');canStart();return}
+  const max=(api&&api.max_upload_mb)||500;
+  if(f.size>max*1048576){file=null;showErr(`영상이 ${max}MB를 넘습니다. 길이를 줄이거나 해상도를 낮춰 주세요.`);canStart();return}
+  file=f;$('dropTxt').textContent=f.name;$('dropSub').textContent=(f.size/1048576).toFixed(1)+'MB · 다른 영상을 고르려면 다시 누르세요';canStart();
+}
+upFile.addEventListener('change',()=>pick(upFile.files[0]));
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();if(api)drop.classList.add('over')}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{if(api&&e.dataTransfer.files[0])pick(e.dataTransfer.files[0])});
+upGo.addEventListener('click',startJob);
+
+function stopJob(msg){busy=false;canStart();$('prog').hidden=true;showErr(msg)}
+function startJob(src){
+  const f=src instanceof File?src:file;
+  if(!api||!f||busy)return;busy=true;canStart();showErr('');const mode=upMode;
+  const fd=new FormData();fd.append('video',f);fd.append('mode',MODE_API[mode]);
+  const x=new XMLHttpRequest();x.open('POST','api/jobs');
+  x.upload.onprogress=e=>{if(e.lengthComputable)setProg(e.loaded/e.total*.1,`영상 올리는 중 ${Math.round(e.loaded/e.total*100)}%`)};
+  x.onload=()=>{let r={};try{r=JSON.parse(x.responseText)}catch(e){}
+    if(x.status>=300||!r.id){stopJob(r.detail||'영상을 올리지 못했습니다. 잠시 뒤 다시 시도해 주세요.');return}
+    poll(r.id,mode,f,0)};
+  x.onerror=()=>stopJob('서버에 연결하지 못했습니다. 네트워크를 확인해 주세요.');
+  setProg(0,'영상 올리는 중');x.send(fd);
+}
+/* 작업 상태 조회. 404는 바로 멈추고, 서버·네트워크 오류는 10번 연속이면 멈춥니다. */
+const GONE='분석 작업을 찾을 수 없습니다. 서버가 다시 시작되었거나 보관 기간이 지났을 수 있습니다. 영상을 다시 올려 주세요.';
+function poll(id,mode,f,fails){
+  const retry=()=>{if(fails+1>=10){stopJob('서버 응답이 없어 분석 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');return}setTimeout(()=>poll(id,mode,f,fails+1),3000)};
+  fetch('api/jobs/'+id).then(r=>{if(r.status===404)throw 'gone';if(!r.ok)throw 'retry';return r.json()}).then(j=>{
+    if(j.status==='failed'){stopJob(j.error||'분석하지 못했습니다.');return}
+    if(j.status==='done')return showResult(id,mode,f);
+    if(j.status==='queued')setProg(.1,j.queue_ahead?`대기 중 · 앞에 ${j.queue_ahead}개 분석이 있습니다`:'곧 분석을 시작합니다');
+    else if(j.status==='preparing')setProg(.12,'영상 확인 중');
+    else if(j.status==='analyzing')setProg(.15+.85*j.progress,`${MODE_KO[mode]} 모드로 분석 중 ${Math.round(j.progress*100)}%`);
+    else{stopJob('서버가 알 수 없는 상태를 보냈습니다. 영상을 다시 올려 주세요.');return}
+    setTimeout(()=>poll(id,mode,f,0),1000);
+  }).catch(e=>e==='gone'?stopJob(GONE):retry());
+}
+function showResult(id,mode,f){
+  return fetch('api/jobs/'+id+'/result').then(r=>{if(r.status===404)throw 'gone';if(!r.ok)throw 'bad';return r.json()}).then(d=>{
+    if(!d||!Array.isArray(d.frames)||!d.n)throw 'bad';
+    busy=false;canStart();setProg(1,`분석을 마쳤습니다 · ${d.n}프레임`);
+    const url='api/jobs/'+id+'/video';
+    /* 같은 파일(같은 File 객체)을 다른 모드로 다시 분석한 경우에만 결과를 합칩니다 */
+    if(UP&&UP.file===f&&UP.n===d.n)UP.modes[mode]=d.frames;
+    else UP=makeSource({name:f.name,file:f,url,fps:d.fps,w:d.w,h:d.h,modes:{[mode]:d.frames}});
+    load(UP,mode);$('demo').scrollIntoView({behavior:'smooth'});
+  }).catch(e=>stopJob(e==='gone'?GONE:'분석 결과를 불러오지 못했습니다. 영상을 다시 올려 주세요.'));
+}
+fetch('api/health').then(r=>r.ok?r.json():Promise.reject()).then(h=>{if(!h.ok)throw 0;api=h;$('dropSub').textContent=`mp4 권장 · 최대 ${h.max_upload_mb}MB`;canStart()})
+  .catch(()=>{drop.classList.add('off');upFile.disabled=true;$('upHint').textContent='영상 업로드 분석은 분석 서버(server/app.py)로 이 페이지를 열었을 때 쓸 수 있습니다. 지금은 예시 영상만 볼 수 있습니다.'});
+
+const menu=$('menuBtn'),sheet=$('sheet');
+function closeMenu(){menu.setAttribute('aria-expanded','false');sheet.classList.remove('show');sheet.classList.remove('open')}
+menu.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(open));
+  if(open){sheet.classList.add('open');[...sheet.children].forEach((a,j)=>a.style.transitionDelay=Math.min(j*60,340)+'ms');requestAnimationFrame(()=>requestAnimationFrame(()=>sheet.classList.add('show')))}else closeMenu()});
+sheet.querySelectorAll('a').forEach(a=>a.addEventListener('click',closeMenu));
+
+if('IntersectionObserver' in window&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
+  const rio=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.remove('pre');rio.unobserve(e.target)}}),{rootMargin:'0px 0px -10% 0px'});
+  document.querySelectorAll('.rv').forEach(el=>{if(el.getBoundingClientRect().top>innerHeight){el.classList.add('pre');rio.observe(el)}});
+}
+const secs=['demo','upload','how','results'].map(id=>$(id)),links=[...document.querySelectorAll('.nav .lk')];
+const nio=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id))}),{rootMargin:'-45% 0px -50% 0px'});
+secs.forEach(s=>nio.observe(s));
+}
+</script>
+</body>
+</html>

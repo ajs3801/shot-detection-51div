@@ -1,0 +1,7 @@
+# Web server
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+
+# Analysis engine: follow the engine's own pinned environment (ultralytics 8.4.104)
+-r ../target_bullet_yolo/requirements.txt
