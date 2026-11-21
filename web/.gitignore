@@ -1,0 +1,6 @@
+# 업로드 영상과 분석 결과
+jobs/
+# 원본 영상은 공개하지 않습니다 (비공개 Drive에서 받아 static/ 에 넣어 쓰세요)
+static/*.mp4
+__pycache__/
+.venv/
