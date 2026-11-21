@@ -3,15 +3,5 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 
-# Analysis engine
-# Keep these pinned versions to reproduce the experiment PC results.
-# A different ultralytics version changes impact detection and tracking.
-torch==2.7.1
-torchvision==0.22.1
-ultralytics==8.4.78
-opencv-python==4.11.0.86
-numpy>=1.26,<2
-scipy>=1.11,<2
-PyYAML>=6,<7
-matplotlib>=3.8,<4
-imageio-ffmpeg>=0.6,<0.9
+# Analysis engine: follow the engine's own pinned environment (ultralytics 8.4.104)
+-r ../target_bullet_yolo/requirements.txt

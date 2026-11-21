@@ -13,6 +13,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 BASE = Path(__file__).resolve().parents[1]
 ENGINE = Path(os.environ.get('SHOT_ENGINE', BASE.parent / 'target_bullet_yolo')).resolve()
@@ -234,4 +235,13 @@ def job_video(job_id: str):
     return FileResponse(path, media_type='video/mp4')
 
 
-app.mount('/', StaticFiles(directory=STATIC, html=True), name='static')
+class PublicStatic(StaticFiles):
+    """static/ 의 페이지와 파생 결과만 제공합니다. 원본 영상은 넣어 두어도 내보내지 않습니다."""
+
+    async def get_response(self, path, scope):
+        if Path(path).suffix.lower() in VIDEO_EXT:
+            raise StarletteHTTPException(404)
+        return await super().get_response(path, scope)
+
+
+app.mount('/', PublicStatic(directory=STATIC, html=True), name='static')

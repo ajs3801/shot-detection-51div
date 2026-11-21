@@ -7,14 +7,16 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY target_bullet_yolo/requirements.txt target_bullet_yolo/requirements.txt
 COPY web/requirements.txt web/requirements.txt
-# CPU용 PyTorch를 먼저 설치합니다. GPU 서버라면 index-url을 CUDA용으로 바꾸세요.
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.7.1 torchvision==0.22.1 \
+# CPU용 PyTorch를 먼저 설치합니다 (엔진 requirements의 버전 범위). GPU 서버라면 index-url을 CUDA용으로 바꾸세요.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch>=2.3,<3" "torchvision>=0.18,<1" \
  && pip install --no-cache-dir -r web/requirements.txt
 
 COPY target_bullet_yolo target_bullet_yolo
 COPY web/server web/server
-COPY web/static web/static
+# 페이지와 파생 결과만 이미지에 넣습니다. 원본 영상(mp4)은 넣지 않습니다.
+COPY web/static/index.html web/static/data.json web/static/
 
 ENV SHOT_DEVICE=cpu \
     SHOT_JOBS=/data/jobs

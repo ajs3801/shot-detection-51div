@@ -569,7 +569,10 @@ fetch('data.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
   return fetch('clip_01_04.mp4').then(r=>{if(!r.ok)throw new Error(r.status);return r.blob()}).then(b=>{
     SAMPLE.blobUrl=URL.createObjectURL(new Blob([b],{type:'video/mp4'}));
   }).catch(()=>{SAMPLE.missing=true;SAMPLE.t=(SAMPLE.last+.5)/SAMPLE.fps}).then(()=>{
-    if(SAMPLE.missing){$('loading').textContent='예시 영상(clip_01_04.mp4)이 이 서버에 없어 결과만 보여 줍니다. static 폴더에 영상을 넣으면 재생됩니다.';$('loading').classList.add('miss')}else $('loading').remove();
+    if(SAMPLE.missing){const m=$('loading');m.classList.add('miss');
+      m.innerHTML='<span>원본 영상은 공개하지 않아 분석 결과만 표시합니다. </span><label class="linkbtn" for="sampleFile">PC에 있는 clip_01_04.mp4로 재생</label><input type="file" id="sampleFile" accept="video/*,.mp4" hidden>';
+      $('sampleFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;SAMPLE.blobUrl=URL.createObjectURL(f);SAMPLE.missing=false;load(SAMPLE,preset)});
+    }else $('loading').remove();
     load(SAMPLE,'b27')});
 }).catch(()=>{$('loading').textContent='결과 데이터를 불러오지 못했습니다. 페이지를 새로 고쳐 주세요.'});
 
