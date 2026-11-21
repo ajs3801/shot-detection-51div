@@ -536,7 +536,7 @@ function syncButtons(){
 }
 function setPreset(p){
   if(!S)return;
-  if(!S.modes[p]){if(S===UP&&file&&api){setUpMode(p);startJob()}return}
+  if(!S.modes[p]){if(S===UP&&UP.file&&api&&!busy){setUpMode(p);startJob(UP.file)}return}
   preset=p;prepare();syncButtons();applyZoom();
 }
 $('pB27').addEventListener('click',()=>setPreset('b27'));$('pA30').addEventListener('click',()=>setPreset('a30'));
@@ -597,31 +597,43 @@ upFile.addEventListener('change',()=>pick(upFile.files[0]));
 drop.addEventListener('drop',e=>{if(api&&e.dataTransfer.files[0])pick(e.dataTransfer.files[0])});
 upGo.addEventListener('click',startJob);
 
-function startJob(){
-  if(!api||!file||busy)return;busy=true;canStart();showErr('');const mode=upMode;
-  const fd=new FormData();fd.append('video',file);fd.append('mode',MODE_API[mode]);
+function stopJob(msg){busy=false;canStart();$('prog').hidden=true;showErr(msg)}
+function startJob(src){
+  const f=src instanceof File?src:file;
+  if(!api||!f||busy)return;busy=true;canStart();showErr('');const mode=upMode;
+  const fd=new FormData();fd.append('video',f);fd.append('mode',MODE_API[mode]);
   const x=new XMLHttpRequest();x.open('POST','api/jobs');
   x.upload.onprogress=e=>{if(e.lengthComputable)setProg(e.loaded/e.total*.1,`영상 올리는 중 ${Math.round(e.loaded/e.total*100)}%`)};
   x.onload=()=>{let r={};try{r=JSON.parse(x.responseText)}catch(e){}
-    if(x.status>=300||!r.id){busy=false;canStart();$('prog').hidden=true;showErr(r.detail||'영상을 올리지 못했습니다. 잠시 뒤 다시 시도해 주세요.');return}
-    poll(r.id,mode,file.name)};
-  x.onerror=()=>{busy=false;canStart();$('prog').hidden=true;showErr('서버에 연결하지 못했습니다. 네트워크를 확인해 주세요.')};
+    if(x.status>=300||!r.id){stopJob(r.detail||'영상을 올리지 못했습니다. 잠시 뒤 다시 시도해 주세요.');return}
+    poll(r.id,mode,f,0)};
+  x.onerror=()=>stopJob('서버에 연결하지 못했습니다. 네트워크를 확인해 주세요.');
   setProg(0,'영상 올리는 중');x.send(fd);
 }
-function poll(id,mode,name){
-  fetch('api/jobs/'+id).then(r=>r.json()).then(j=>{
-    if(j.status==='queued'){setProg(.1,j.queue_ahead?`대기 중 · 앞에 ${j.queue_ahead}개 분석이 있습니다`:'곧 분석을 시작합니다')}
-    else if(j.status==='preparing'){setProg(.12,'영상 확인 중')}
-    else if(j.status==='analyzing'){setProg(.15+.85*j.progress,`${MODE_KO[mode]} 모드로 분석 중 ${Math.round(j.progress*100)}%`)}
-    if(j.status==='failed'){busy=false;canStart();$('prog').hidden=true;showErr(j.error||'분석하지 못했습니다.');return}
-    if(j.status==='done'){return fetch('api/jobs/'+id+'/result').then(r=>r.json()).then(d=>{
-      busy=false;canStart();setProg(1,`분석을 마쳤습니다 · ${d.n}프레임`);
-      const url='api/jobs/'+id+'/video';
-      if(UP&&UP.name===name&&UP.n===d.n){UP.modes[mode]=d.frames}else UP=makeSource({name,url,fps:d.fps,w:d.w,h:d.h,modes:{[mode]:d.frames}});
-      load(UP,mode);$('demo').scrollIntoView({behavior:'smooth'});
-    })}
-    setTimeout(()=>poll(id,mode,name),1000);
-  }).catch(()=>setTimeout(()=>poll(id,mode,name),3000));
+/* 작업 상태 조회. 404는 바로 멈추고, 서버·네트워크 오류는 10번 연속이면 멈춥니다. */
+const GONE='분석 작업을 찾을 수 없습니다. 서버가 다시 시작되었거나 보관 기간이 지났을 수 있습니다. 영상을 다시 올려 주세요.';
+function poll(id,mode,f,fails){
+  const retry=()=>{if(fails+1>=10){stopJob('서버 응답이 없어 분석 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');return}setTimeout(()=>poll(id,mode,f,fails+1),3000)};
+  fetch('api/jobs/'+id).then(r=>{if(r.status===404)throw 'gone';if(!r.ok)throw 'retry';return r.json()}).then(j=>{
+    if(j.status==='failed'){stopJob(j.error||'분석하지 못했습니다.');return}
+    if(j.status==='done')return showResult(id,mode,f);
+    if(j.status==='queued')setProg(.1,j.queue_ahead?`대기 중 · 앞에 ${j.queue_ahead}개 분석이 있습니다`:'곧 분석을 시작합니다');
+    else if(j.status==='preparing')setProg(.12,'영상 확인 중');
+    else if(j.status==='analyzing')setProg(.15+.85*j.progress,`${MODE_KO[mode]} 모드로 분석 중 ${Math.round(j.progress*100)}%`);
+    else{stopJob('서버가 알 수 없는 상태를 보냈습니다. 영상을 다시 올려 주세요.');return}
+    setTimeout(()=>poll(id,mode,f,0),1000);
+  }).catch(e=>e==='gone'?stopJob(GONE):retry());
+}
+function showResult(id,mode,f){
+  return fetch('api/jobs/'+id+'/result').then(r=>{if(r.status===404)throw 'gone';if(!r.ok)throw 'bad';return r.json()}).then(d=>{
+    if(!d||!Array.isArray(d.frames)||!d.n)throw 'bad';
+    busy=false;canStart();setProg(1,`분석을 마쳤습니다 · ${d.n}프레임`);
+    const url='api/jobs/'+id+'/video';
+    /* 같은 파일(같은 File 객체)을 다른 모드로 다시 분석한 경우에만 결과를 합칩니다 */
+    if(UP&&UP.file===f&&UP.n===d.n)UP.modes[mode]=d.frames;
+    else UP=makeSource({name:f.name,file:f,url,fps:d.fps,w:d.w,h:d.h,modes:{[mode]:d.frames}});
+    load(UP,mode);$('demo').scrollIntoView({behavior:'smooth'});
+  }).catch(e=>stopJob(e==='gone'?GONE:'분석 결과를 불러오지 못했습니다. 영상을 다시 올려 주세요.'));
 }
 fetch('api/health').then(r=>r.ok?r.json():Promise.reject()).then(h=>{if(!h.ok)throw 0;api=h;$('dropSub').textContent=`mp4 권장 · 최대 ${h.max_upload_mb}MB`;canStart()})
   .catch(()=>{drop.classList.add('off');upFile.disabled=true;$('upHint').textContent='영상 업로드 분석은 분석 서버(server/app.py)로 이 페이지를 열었을 때 쓸 수 있습니다. 지금은 예시 영상만 볼 수 있습니다.'});
